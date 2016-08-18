@@ -1,2 +1,3 @@
 # libant
-Python Ant+ Library
+A Python Ant+ Library  
+Use with ANT+ devices from https://www.thisisant.com/
