@@ -1,4 +1,5 @@
 # LibAnt
+[![Build Status](https://travis-ci.org/half2me/libant.svg?branch=master)](https://travis-ci.org/half2me/libant)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/half2me/libant/master/LICENSE)  
 A Python implementation of the ANT+ Protocol  
 
