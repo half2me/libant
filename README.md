@@ -1,4 +1,5 @@
-# libant [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/half2me/libant/master/LICENSE)
+# LibAnt
+[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/half2me/libant/master/LICENSE)  
 A Python implementation of the ANT+ Protocol  
 
 The goal of this project is to provide a clean, Python-only implementation of the [ANT+ Protocol](https://www.thisisant.com). Usage of the library should require little to no knowledge of the ANT+ Protocol internals. It should be easy to use, easy to read, and have proper error handling.
