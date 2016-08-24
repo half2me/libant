@@ -11,6 +11,10 @@ class DriverException(Exception):
 
 
 class Driver:
+    """
+    The driver provides an interface to read and write raw data to and from an ANT+ capable hardware device
+    """
+
     def __init__(self):
         self._lock = Lock()
 
@@ -33,6 +37,12 @@ class Driver:
         with self._lock:
             if self._isOpen:
                 self._close()
+
+    def reOpen(self):
+        with self._lock:
+            if self._isOpen:
+                self._close()
+                self._open()
 
     def read(self, count):
         if count <= 0:
@@ -72,6 +82,10 @@ class Driver:
 
 
 class SerialDriver(Driver):
+    """
+    An implementation of a serial ANT+ device driver
+    """
+
     def __init__(self, device, baudRate=115200):
         super().__init__()
         self._device = device
@@ -105,7 +119,11 @@ class SerialDriver(Driver):
             raise DriverException(str(e))
 
 
-class USB2Driver(Driver):
+class USBDriver(Driver):
+    """
+    An implementation of a USB ANT+ device driver
+    """
+
     def __init__(self, idVendor, idProduct):
         Driver.__init__(self)
         self._idVendor = idVendor
