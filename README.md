@@ -1,9 +1,9 @@
 # LibAnt
 
-[![Join the chat at https://gitter.im/libant/Lobby](https://badges.gitter.im/libant/Lobby.svg)](https://gitter.im/libant/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/half2me/libant.svg?branch=master)](https://travis-ci.org/half2me/libant)
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/half2me/libant/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/half2me/libant/?branch=master)
-[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/half2me/libant/master/LICENSE)  
+[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/half2me/libant/master/LICENSE) 
+[![Join the chat at https://gitter.im/libant/Lobby](https://badges.gitter.im/libant/Lobby.svg)](https://gitter.im/libant/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)  
 A Python implementation of the ANT+ Protocol  
 
 The goal of this project is to provide a clean, Python-only implementation of the [ANT+ Protocol](https://www.thisisant.com). Usage of the library should require little to no knowledge of the ANT+ Protocol internals. It should be easy to use, easy to read, and have proper error handling.
