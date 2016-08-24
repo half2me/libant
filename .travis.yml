@@ -22,3 +22,5 @@ script: make test
 matrix:
   fast_finish: true
 sudo: false
+notifications:
+  email: false
