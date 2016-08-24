@@ -1,4 +1,6 @@
 # LibAnt
+
+[![Join the chat at https://gitter.im/libant/Lobby](https://badges.gitter.im/libant/Lobby.svg)](https://gitter.im/libant/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/half2me/libant.svg?branch=master)](https://travis-ci.org/half2me/libant)
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/half2me/libant/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/half2me/libant/?branch=master)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/half2me/libant/master/LICENSE)  
