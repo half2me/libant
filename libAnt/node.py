@@ -1,11 +1,10 @@
-class Node():
+class Node:
     def __init__(self, driver, name=None):
-        with driver:
-            self._driver = driver
+        self._driver = driver
         self._name = name
 
     def __enter__(self):
-        self.start()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()

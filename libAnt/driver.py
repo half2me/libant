@@ -20,6 +20,7 @@ class Driver:
 
     def __enter__(self):
         self.open()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
@@ -92,16 +93,21 @@ class SerialDriver(Driver):
         self._baudRate = baudRate
         self._serial = None
 
+    def __str__(self):
+        if self.isOpen():
+            return self._device + " @ " + str(self._baudRate)
+        return None
+
     def _isOpen(self):
         return self._serial is None
 
     def _open(self):
         try:
-            self._dev = Serial(self._device, self._baudRate)
+            self._serial = Serial(self._device, self._baudRate)
         except SerialException as e:
             raise DriverException(str(e))
 
-        if not self._dev.isOpen():
+        if not self._serial.isOpen():
             raise DriverException("Could not open specified device")
 
     def _close(self):
@@ -132,6 +138,11 @@ class USBDriver(Driver):
         self._epOut = None
         self._epIn = None
         self._interfaceNumber = None
+
+    def __str__(self):
+        if self.isOpen():
+            return str(self._dev)
+        return None
 
     def _isOpen(self):
         return self._dev is not None
