@@ -1,4 +1,5 @@
 import threading
+from time import sleep
 
 
 class Network:
@@ -12,9 +13,10 @@ class Network:
 
 
 class Pump(threading.Thread):
-    def __init__(self):
+    def __init__(self, driver):
         super().__init__()
         self._stop = threading.Event()
+        self._driver = driver
 
     def stop(self):
         self._stop.set()
@@ -23,15 +25,19 @@ class Pump(threading.Thread):
         return self._stop.isSet()
 
     def run(self):
-        pass
+        with self._driver as driver:
+            while not self._stop.is_set():
+                buf = driver.read(20)
+                print(buf)
+                # TODO: do stuff here
+                sleep(0.01)
 
 
 class Node:
     def __init__(self, driver, name=None):
         self._driver = driver
         self._name = name
-        self.running = False
-        self.pump = Pump()
+        self._pump = Pump(driver)
 
     def __enter__(self):
         return self
@@ -40,21 +46,20 @@ class Node:
         self.stop()
 
     def start(self):
-        if not self.running:
-            self.pump.start()
-            self.running = True
+        if not self.isRunning():
+            self._pump.start()
 
     def stop(self):
-        if self.running:
-            self.pump.stop()
-            self.pump.join()
-            self.running = False
+        if self.isRunning():
+            self._pump.stop()
+            self._pump.join()
+
+    def isRunning(self):
+        return self._pump.is_alive()
 
     def reset(self):
-        pass
+        self.stop()
+        # TODO: reset device
 
     def getCapabilities(self):
-        pass
-
-    def addEventListener(self, callback):
         pass
