@@ -1,6 +1,9 @@
 import threading
 from time import sleep
 
+from libAnt.constants import MESSAGE_TX_SYNC, MESSAGE_TX_SYNC_LEGACY
+from libAnt.message import Message
+
 
 class Network:
     def __init__(self, key=b'\x00' * 8, name=None):
@@ -27,10 +30,16 @@ class Pump(threading.Thread):
     def run(self):
         with self._driver as driver:
             while not self._stop.is_set():
-                buf = driver.read(20)
-                print(buf)
-                # TODO: do stuff here
-                sleep(0.01)
+                sync = driver.read(1)  # search for sync
+                if sync == MESSAGE_TX_SYNC or sync == MESSAGE_TX_SYNC_LEGACY:
+                    size = driver.read(1) # get size of message
+                    try:
+                        raw = bytearray(sync)
+                        raw.extend(size)
+                        raw.extend(driver.read(size + 2))
+                        message = Message.decode(raw)
+                    except Exception as e:
+                        pass
 
 
 class Node:
