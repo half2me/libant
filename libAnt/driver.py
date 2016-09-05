@@ -163,7 +163,7 @@ class USBDriver(Driver):
                     except usb.USBError as e:
                         raise DriverException("Could not detach kernel driver")
             except NotImplementedError:
-                pass # for non unix systems
+                pass  # for non unix systems
 
             # set the active configuration. With no arguments, the first
             # configuration will be the active one
@@ -180,10 +180,10 @@ class USBDriver(Driver):
             self._epOut = usb.util.find_descriptor(interface, custom_match=lambda e: usb.util.endpoint_direction(
                 e.bEndpointAddress) == usb.ENDPOINT_OUT)
 
-            self._ep_in = usb.util.find_descriptor(interface, custom_match=lambda e: usb.util.endpoint_direction(
+            self._epIn = usb.util.find_descriptor(interface, custom_match=lambda e: usb.util.endpoint_direction(
                 e.bEndpointAddress) == usb.ENDPOINT_IN)
 
-            if self._epOut is None or self._ep_in is None:
+            if self._epOut is None or self._epIn is None:
                 raise DriverException("Could not initialize USB endpoint")
         except IOError as e:
             raise DriverException(str(e))
