@@ -194,7 +194,7 @@ class USBDriver(Driver):
         self._dev = self._epOut = self._epIn = None
 
     def _read(self, count):
-        return self._epIn.read(count)
+        return self._epIn.read(count, timeout=-1)  # wait as long as it takes :)
 
     def _write(self, data):
         return self._epOut.write(data)
