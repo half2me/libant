@@ -27,21 +27,21 @@ class Driver:
 
     def isOpen(self):
         with self._lock:
-            return self._isOpen
+            return self._isOpen()
 
     def open(self):
         with self._lock:
-            if not self._isOpen:
+            if not self._isOpen():
                 self._open()
 
     def close(self):
         with self._lock:
-            if self._isOpen:
+            if self._isOpen():
                 self._close()
 
     def reOpen(self):
         with self._lock:
-            if self._isOpen:
+            if self._isOpen():
                 self._close()
                 self._open()
 
@@ -142,7 +142,7 @@ class USBDriver(Driver):
     def __str__(self):
         if self.isOpen():
             return str(self._dev)
-        return None
+        return "Closed"
 
     def _isOpen(self):
         return self._dev is not None
@@ -156,11 +156,14 @@ class USBDriver(Driver):
                 raise DriverException("Could not open specified device")
 
             # Detach kernel driver
-            if self._dev.is_kernel_driver_active(0):
-                try:
-                    self._dev.detach_kernel_driver(0)
-                except usb.USBError as e:
-                    raise DriverException("Could not detach kernel driver")
+            try:
+                if self._dev.is_kernel_driver_active(0):
+                    try:
+                        self._dev.detach_kernel_driver(0)
+                    except usb.USBError as e:
+                        raise DriverException("Could not detach kernel driver")
+            except NotImplementedError:
+                pass # for non unix systems
 
             # set the active configuration. With no arguments, the first
             # configuration will be the active one
