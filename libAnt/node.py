@@ -31,6 +31,7 @@ class Pump(threading.Thread):
         with self._driver as driver:
             while not self._stop.is_set():
                 sync = driver.read(1)  # search for sync
+                print(sync)
                 if sync == MESSAGE_TX_SYNC or sync == MESSAGE_TX_SYNC_LEGACY:
                     size = driver.read(1) # get size of message
                     try:
