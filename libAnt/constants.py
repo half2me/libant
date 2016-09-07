@@ -2,16 +2,23 @@ MESSAGE_TX_SYNC = 0xA4
 MESSAGE_TX_SYNC_LEGACY = 0xA5
 
 # Configuration messages
-MESSAGE_CHANNEL_UNASSIGN = 0x41
-MESSAGE_CHANNEL_ASSIGN = 0x42
-MESSAGE_CHANNEL_ID = 0x51
-MESSAGE_CHANNEL_PERIOD = 0x43
-MESSAGE_CHANNEL_SEARCH_TIMEOUT = 0x44
-MESSAGE_CHANNEL_FREQUENCY = 0x45
-MESSAGE_CHANNEL_TX_POWER = 0x60
-MESSAGE_NETWORK_KEY = 0x46
-MESSAGE_TX_POWER = 0x47
+MESSAGE_CHANNEL_UNASSIGN = 0x41  # [Channel number]
+MESSAGE_CHANNEL_ASSIGN = 0x42  # [Channel number, Channel type, Network number, Extended assign't (optional)]
+MESSAGE_CHANNEL_ID = 0x51  # [Channel number, Device number (2bytes), Device type ID, Trans. type]
+MESSAGE_CHANNEL_PERIOD = 0x43  # [Channel number, Channel period (2bytes)]
+MESSAGE_CHANNEL_SEARCH_TIMEOUT = 0x44  # [Channel number, Search timeout]
+MESSAGE_CHANNEL_FREQUENCY = 0x45  # [Channel number, RF frequency]
+MESSAGE_NETWORK_KEY = 0x46  # [Network number, Network key (8bytes)]
+MESSAGE_TX_POWER = 0x47  # [0, TX Power]
+MESSAGE_SEARCH_WAVEFORM = 0x49  # [Channel number, Waveform (2bytes)]
+MESSAGE_ADD_CHANNEL_ID_TO_LIST = 0x59  # [Channel number, Device number, Device type ID, Trans. type, List index]
+MESSAGE_ADD_ENCRYPION_ID_TO_LIST = 0x59  # [Channel number, Encryption ID (4bytes), List index]
+MESSAGE_CONFIG_ID_LIST = 0x5A  # [Channel number, List size, Exclude]
+MESSAGE_CHANNEL_TX_POWER = 0x60  # [Channel number, Transmit power]
+MESSAGE_LOW_PRIORITY_SEARCH_TIMEOUT = 0x63  # [Channel number, Search timeout]
 MESSAGE_PROXIMITY_SEARCH = 0x71
+MESSAGE_ENABLE_EXT_RX_MESSAGES = 0x66 # [0, enable]
+
 
 # Notification messages
 MESSAGE_STARTUP = 0x6F
@@ -108,7 +115,7 @@ CAPABILITIES_FS_ANTFS_ENABLED = 0x40
 TIMEOUT_NEVER = 0xFF
 
 OPEN_RX_SCAN_MODE = 0x5B
-RX_EXT_MESSAGES_ENABLE = 0x66
+
 
 ANTPLUS_NETWORK_KEY = 0xB9A521FBBD72C345
 ANTFS_KEY = 0xA8A423B9F55E63C1
