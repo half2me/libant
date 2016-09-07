@@ -5,6 +5,8 @@ from serial import Serial, SerialException, SerialTimeoutException
 
 import usb
 
+from libAnt.constants import MESSAGE_TX_SYNC
+
 
 class DriverException(Exception):
     pass
@@ -25,27 +27,27 @@ class Driver:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def isOpen(self):
+    def isOpen(self) -> bool:
         with self._lock:
             return self._isOpen()
 
-    def open(self):
+    def open(self) -> None:
         with self._lock:
             if not self._isOpen():
                 self._open()
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             if self._isOpen():
                 self._close()
 
-    def reOpen(self):
+    def reOpen(self) -> None:
         with self._lock:
             if self._isOpen():
                 self._close()
                 self._open()
 
-    def read(self, count):
+    def read(self, count: int) -> bytearray:
         if count <= 0:
             raise DriverException("Count must be > 0")
         if not self.isOpen():
@@ -54,12 +56,25 @@ class Driver:
         with self._lock:
             return self._read(count)
 
-    def write(self, msg):
+    def write(self, type: int, msg: bytearray) -> None:
         if not self.isOpen():
             raise DriverException("Device is closed")
 
+        print('HOST ({:02X}): '.format(type) + ' '.join('{:02X}'.format(x) for x in msg))
+        payload = bytearray()
+        payload.append(MESSAGE_TX_SYNC)
+        payload.append(len(msg))
+        payload.append(type)
+        payload.extend(msg)
+
+        checksum = 0
+        for b in payload:
+            checksum ^= b
+
+        payload.append(checksum)
+
         with self._lock:
-            self.write(msg)
+            self._write(payload)
 
     @abstractmethod
     def _isOpen(self):

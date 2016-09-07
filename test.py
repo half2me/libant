@@ -1,15 +1,9 @@
-from libAnt.constants import MESSAGE_TX_SYNC
+#!/usr/bin/env python3
+from libAnt.constants import ANTPLUS_NETWORK_KEY, MESSAGE_NETWORK_KEY
 from libAnt.driver import USBDriver
 
 driver = USBDriver(vid=0x0FCF, pid=0x1008)
 with driver as d:
-    payload = bytearray()
-    payload.append(MESSAGE_TX_SYNC)
-    payload.append(0x4A)
-    payload.append(0x01)
-    payload.append(0x00)
-    chksum = [for b in payload]
-    payload.append()
-    print(payload)
-    d.write(payload)
-    print("yolo")
+    msg = bytearray()
+    msg.extend(ANTPLUS_NETWORK_KEY)
+    d.write(MESSAGE_NETWORK_KEY, msg)  # system
