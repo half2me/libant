@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from queue import Queue
+from queue import Queue, Empty
 from threading import Lock, Thread, Event
 
 from serial import Serial, SerialException, SerialTimeoutException
@@ -7,6 +7,7 @@ from serial import Serial, SerialException, SerialTimeoutException
 import usb
 
 from libAnt.constants import MESSAGE_TX_SYNC
+from libAnt.message import Message
 
 
 class DriverException(Exception):
@@ -48,34 +49,29 @@ class Driver:
                 self._close()
                 self._open()
 
-    def read(self, count: int) -> bytearray:
-        if count <= 0:
-            raise DriverException("Count must be > 0")
+    def read(self) -> Message:
         if not self.isOpen():
             raise DriverException("Device is closed")
 
         with self._lock:
-            return self._read(count)
+            while True:
+                sync = self._read(1)[0]
+                if sync is not MESSAGE_TX_SYNC:
+                    continue
+                len = self._read(1)[0]
+                type = self._read(1)[0]
+                data = self._read(len)
+                chk = self._read(1)[0]
+                msg = Message(type, data)
+                if msg.checksum() == chk:
+                    return msg
 
-    def write(self, type: int, msg: bytearray) -> None:
+    def write(self, msg: Message) -> None:
         if not self.isOpen():
             raise DriverException("Device is closed")
 
-        print('HOST ({:02X}): '.format(type) + ' '.join('{:02X}'.format(x) for x in msg))
-        payload = bytearray()
-        payload.append(MESSAGE_TX_SYNC)
-        payload.append(len(msg))
-        payload.append(type)
-        payload.extend(msg)
-
-        checksum = 0
-        for b in payload:
-            checksum ^= b
-
-        payload.append(checksum)
-
         with self._lock:
-            self._write(payload)
+            self._write(msg.encode())
 
     @abstractmethod
     def _isOpen(self):
@@ -90,7 +86,7 @@ class Driver:
         pass
 
     @abstractmethod
-    def _read(self, count):
+    def _read(self, count: int) -> bytearray:
         pass
 
     @abstractmethod
@@ -233,21 +229,18 @@ class USBDriver(Driver):
 class USBLoop(Thread):
     def __init__(self, ep, packetSize, queue):
         super().__init__()
-        self._stop = Event()
+        self._stopper = Event()
         self._ep = ep
         self._packetSize = packetSize
         self._queue = queue
 
     def stop(self):
-        self._stop.set()
-
-    def stopped(self):
-        return self._stop.isSet()
+        self._stopper.set()
 
     def run(self):
-        while not self._stop.is_set():
+        while not self._stopper.is_set():
             try:
-                data = self._ep.read(self._packetSize, 10000)
+                data = self._ep.read(self._packetSize)
                 for d in data:
                     self._queue.put(d)
             except usb.USBError as e:

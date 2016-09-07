@@ -7,3 +7,5 @@ with driver as d:
     msg = bytearray()
     msg.extend(ANTPLUS_NETWORK_KEY)
     d.write(MESSAGE_NETWORK_KEY, msg)  # system
+    ret = d.read()
+
