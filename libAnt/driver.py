@@ -71,9 +71,9 @@ class Driver:
 
         payload.append(checksum)
 
-        print('HOST -> ANT: ', end="")
+        print('HOST: ', end="")
         for p in payload:
-            print(hex(p) + ' ', end="")
+            print('{:02X} '.format(p), end='')
         print('')
 
         with self._lock:
