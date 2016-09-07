@@ -1,5 +1,6 @@
 from abc import abstractmethod
-from threading import Lock
+from queue import Queue
+from threading import Lock, Thread, Event
 
 from serial import Serial, SerialException, SerialTimeoutException
 
@@ -153,6 +154,9 @@ class USBDriver(Driver):
         self._epOut = None
         self._epIn = None
         self._interfaceNumber = None
+        self._packetSize = 0x20
+        self._queue = None
+        self._loop = None
 
     def __str__(self):
         if self.isOpen():
@@ -200,16 +204,52 @@ class USBDriver(Driver):
 
             if self._epOut is None or self._epIn is None:
                 raise DriverException("Could not initialize USB endpoint")
+
+            self._queue = Queue()
+            self._loop = USBLoop(self._epIn, self._packetSize, self._queue)
+            self._loop.start()
         except IOError as e:
             raise DriverException(str(e))
 
     def _close(self):
+        if self._loop.is_alive():
+            self._loop.stop()
+            self._loop.join()
+        self._loop = None
         usb.util.release_interface(self._dev, self._interfaceNumber)
         usb.util.dispose_resources(self._dev)
         self._dev = self._epOut = self._epIn = None
 
     def _read(self, count):
-        return self._epIn.read(count, timeout=-1)  # wait as long as it takes :)
+        buf = bytearray()
+        for i in range(0, count):
+            buf.append(self._queue.get())
+        return buf
 
     def _write(self, data):
         return self._epOut.write(data)
+
+
+class USBLoop(Thread):
+    def __init__(self, ep, packetSize, queue):
+        super().__init__()
+        self._stop = Event()
+        self._ep = ep
+        self._packetSize = packetSize
+        self._queue = queue
+
+    def stop(self):
+        self._stop.set()
+
+    def stopped(self):
+        return self._stop.isSet()
+
+    def run(self):
+        while not self._stop.is_set():
+            try:
+                data = self._ep.read(self._packetSize, 10000)
+                for d in data:
+                    self._queue.put(d)
+            except usb.USBError as e:
+                if e.errno not in (60, 110):
+                    raise e
