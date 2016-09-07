@@ -59,6 +59,8 @@ class Driver:
     def write(self, type: int, msg: bytearray) -> None:
         if not self.isOpen():
             raise DriverException("Device is closed")
+
+        print('HOST ({:02X}): '.format(type) + ' '.join('{:02X}'.format(x) for x in msg))
         payload = bytearray()
         payload.append(MESSAGE_TX_SYNC)
         payload.append(len(msg))
@@ -70,11 +72,6 @@ class Driver:
             checksum ^= b
 
         payload.append(checksum)
-
-        print('HOST: ', end="")
-        for p in payload:
-            print('{:02X} '.format(p), end='')
-        print('')
 
         with self._lock:
             self._write(payload)
