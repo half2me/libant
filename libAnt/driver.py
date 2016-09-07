@@ -74,15 +74,15 @@ class Driver:
             self._write(msg.encode())
 
     @abstractmethod
-    def _isOpen(self):
+    def _isOpen(self) -> bool:
         pass
 
     @abstractmethod
-    def _open(self):
+    def _open(self) -> None:
         pass
 
     @abstractmethod
-    def _close(self):
+    def _close(self) -> None:
         pass
 
     @abstractmethod
@@ -90,7 +90,7 @@ class Driver:
         pass
 
     @abstractmethod
-    def _write(self, data):
+    def _write(self, data: bytearray) -> None:
         pass
 
 
@@ -110,10 +110,10 @@ class SerialDriver(Driver):
             return self._device + " @ " + str(self._baudRate)
         return None
 
-    def _isOpen(self):
+    def _isOpen(self) -> bool:
         return self._serial is None
 
-    def _open(self):
+    def _open(self) -> None:
         try:
             self._serial = Serial(self._device, self._baudRate)
         except SerialException as e:
@@ -122,14 +122,14 @@ class SerialDriver(Driver):
         if not self._serial.isOpen():
             raise DriverException("Could not open specified device")
 
-    def _close(self):
+    def _close(self) -> None:
         self._serial.close()
         self._serial = None
 
-    def _read(self, count):
+    def _read(self, count: int) -> bytearray:
         return self._serial.read(count)
 
-    def _write(self, data):
+    def _write(self, data: bytearray) -> None:
         try:
             count = self._serial.write(data)
             self._serial.flush()
@@ -159,10 +159,10 @@ class USBDriver(Driver):
             return str(self._dev)
         return "Closed"
 
-    def _isOpen(self):
+    def _isOpen(self) -> bool:
         return self._dev is not None
 
-    def _open(self):
+    def _open(self) -> None:
         try:
             # find the first USB device that matches the filter
             self._dev = usb.core.find(idVendor=self._idVendor, idProduct=self._idProduct)
@@ -207,7 +207,7 @@ class USBDriver(Driver):
         except IOError as e:
             raise DriverException(str(e))
 
-    def _close(self):
+    def _close(self) -> None:
         if self._loop.is_alive():
             self._loop.stop()
             self._loop.join()
@@ -216,28 +216,28 @@ class USBDriver(Driver):
         usb.util.dispose_resources(self._dev)
         self._dev = self._epOut = self._epIn = None
 
-    def _read(self, count):
+    def _read(self, count: int) -> bytearray:
         buf = bytearray()
         for i in range(0, count):
             buf.append(self._queue.get())
         return buf
 
-    def _write(self, data):
+    def _write(self, data: bytearray) -> None:
         return self._epOut.write(data)
 
 
 class USBLoop(Thread):
-    def __init__(self, ep, packetSize, queue):
+    def __init__(self, ep, packetSize: int, queue: Queue):
         super().__init__()
         self._stopper = Event()
         self._ep = ep
         self._packetSize = packetSize
         self._queue = queue
 
-    def stop(self):
+    def stop(self) -> None:
         self._stopper.set()
 
-    def run(self):
+    def run(self) -> None:
         while not self._stopper.is_set():
             try:
                 data = self._ep.read(self._packetSize)
