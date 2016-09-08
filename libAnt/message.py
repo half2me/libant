@@ -22,7 +22,9 @@ class Message:
         return chk
 
     def encode(self) -> bytes:
-        b = bytearray([MESSAGE_TX_SYNC, len(self), self._type]).extend(self._content).append(self.checksum())
+        b = bytearray([MESSAGE_TX_SYNC, len(self), self._type])
+        b.extend(self._content)
+        b.append(self.checksum())
         return bytes(b)
 
     @property
@@ -76,7 +78,8 @@ class SystemResetMessage(Message):
 
 class SetNetworkKeyMessage(Message):
     def __init__(self, channel: int, key: bytes):
-        content = bytearray([channel]).extend(key)
+        content = bytearray([channel])
+        content.extend(key)
         super().__init__(MESSAGE_NETWORK_KEY, bytes(content))
 
 
@@ -90,8 +93,11 @@ class AssignChannelMessage(Message):
 
 class SetChannelIdMessage(Message):
     def __init__(self, channel: int, deviceNumber: int = 0, deviceType: int = 0, transType: int = 0):
-        content = bytes([channel, deviceNumber.to_bytes(2, byteorder='big'), deviceType, transType])
-        super().__init__(MESSAGE_CHANNEL_ID, content)
+        content = bytearray([channel])
+        content.extend(deviceNumber.to_bytes(2, byteorder='big'))
+        content.append(deviceType)
+        content.append(transType)
+        super().__init__(MESSAGE_CHANNEL_ID, bytes(content))
 
 
 class SetChannelRfFrequencyMessage(Message):
@@ -102,10 +108,21 @@ class SetChannelRfFrequencyMessage(Message):
 
 class OpenRxScanModeMessage(Message):
     def __init__(self):
-        super().__init__(OPEN_RX_SCAN_MODE, b'1')
+        super().__init__(OPEN_RX_SCAN_MODE, bytes([0]))
 
 
 class EnableExtendedMessagesMessage(Message):
     def __init__(self, enable: bool = True):
         content = bytes([0, int(enable)])
         super().__init__(MESSAGE_ENABLE_EXT_RX_MESSAGES, content)
+
+class LibConfigMessage(Message):
+    def __init__(self, rxTimestamp: bool = True, rssi: bool = True, channelId: bool = True):
+        config = 0
+        if rxTimestamp:
+            config |= EXT_FLAG_TIMESTAMP
+        if rssi:
+            config |= EXT_FLAG_RSSI
+        if channelId:
+            config |= EXT_FLAG_CHANNEL_ID
+        super().__init__(MESSAGE_LIB_CONFIG, bytes([0, config]))

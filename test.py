@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from libAnt.constants import ANTPLUS_NETWORK_KEY, MESSAGE_NETWORK_KEY, MESSAGE_SYSTEM_RESET
+
 from libAnt.driver import USBDriver
 from libAnt.message import *
 
@@ -21,6 +21,9 @@ with driver as d:
     print(d.read())
 
     d.write(EnableExtendedMessagesMessage())
+    print(d.read())
+
+    d.write(LibConfigMessage())
     print(d.read())
 
     d.write(OpenRxScanModeMessage())
