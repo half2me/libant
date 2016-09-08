@@ -23,6 +23,7 @@ MESSAGE_LIB_CONFIG = 0x6E  # [0, libconfig]
 
 # Notification messages
 MESSAGE_STARTUP = 0x6F
+MESSAGE_STARTUP = 0x6F
 
 # Control messages
 MESSAGE_SYSTEM_RESET = 0x4A
@@ -121,3 +122,8 @@ OPEN_RX_SCAN_MODE = 0x5B
 ANTPLUS_NETWORK_KEY = b'\xB9\xA5\x21\xFB\xBD\x72\xC3\x45'
 ANTFS_KEY = b'\xA8\xA4\x23\xB9\xF5\x5E\x63\xC1'
 PUBLIC_NETWORK_KEY = b'\xE8\xE4\x21\x3B\x55\x7A\x67\xC1'
+
+# Extended message flags
+EXT_FLAG_CHANNEL_ID = 0x80
+EXT_FLAG_RSSI = 0x40
+EXT_FLAG_TIMESTAMP = 0x20

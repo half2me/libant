@@ -34,6 +34,32 @@ class Message:
         return self._content
 
 
+class BroadcastMessage(Message):
+    def __init__(self, channel: int, content: bytes):
+        c = bytearray([channel])
+        c.extend(content[:8])
+        if len(content) > 8:  # Extended message
+            self._flag = content[8]
+            self._extendedContent = content[len(content) - 9:]
+            offset = 0
+            if self._flag & EXT_FLAG_CHANNEL_ID:
+                self._deviceNumber = int.from_bytes(self._extendedContent[:2], byteorder='little', signed=False)
+                self._deviceType = self._extendedContent[2]
+                self._transType = self._extendedContent[3]
+                offset += 4
+            if self._flag & EXT_FLAG_RSSI:
+                rssi = self._extendedContent[len(self._extendedContent) - offset:]
+                self._rssiMeasurementType = rssi[0]
+                self._rssi = rssi[1]
+                self._rssiThreshold = rssi[2]
+                offset += 3
+            if self._flag & EXT_FLAG_TIMESTAMP:
+                self._rxTimestamp = int.from_bytes(self._extendedContent[len(self._extendedContent) - offset:],
+                                                   byteorder='little', signed=False)
+
+        super().__init__(MESSAGE_CHANNEL_BROADCAST_DATA, bytes(c))
+
+
 class SystemResetMessage(Message):
     def __init__(self):
         super().__init__(MESSAGE_SYSTEM_RESET, b'0')
