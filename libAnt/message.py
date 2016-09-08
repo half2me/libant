@@ -2,7 +2,7 @@ from libAnt.constants import *
 
 
 class Message:
-    def __init__(self, type: int, content: bytearray):
+    def __init__(self, type: int, content: bytes):
         self._type = type
         self._content = content
 
@@ -21,73 +21,56 @@ class Message:
             chk ^= b
         return chk
 
-    def encode(self) -> bytearray:
-        b = bytearray()
-        b.append(MESSAGE_TX_SYNC)
-        b.append(len(self))
-        b.append(self._type)
-        b.extend(self._content)
-        b.append(self.checksum())
-        return b
+    def encode(self) -> bytes:
+        b = bytearray([MESSAGE_TX_SYNC, len(self), self._type]).extend(self._content).append(self.checksum())
+        return bytes(b)
 
     @property
     def type(self) -> int:
         return self._type
 
     @property
-    def content(self) -> bytearray:
+    def content(self) -> bytes:
         return self._content
 
 
 class SystemResetMessage(Message):
     def __init__(self):
-        super().__init__(MESSAGE_SYSTEM_RESET, bytearray(1))
+        super().__init__(MESSAGE_SYSTEM_RESET, b'0')
 
 
 class SetNetworkKeyMessage(Message):
     def __init__(self, channel: int, key: bytes):
-        content = bytearray()
-        content.append(channel)
-        content.extend(key)
-        super().__init__(MESSAGE_NETWORK_KEY, content)
+        content = bytearray([channel]).extend(key)
+        super().__init__(MESSAGE_NETWORK_KEY, bytes(content))
 
 
 class AssignChannelMessage(Message):
     def __init__(self, channel: int, type: int, network: int = 0, extended: int = None):
-        content = bytearray()
-        content.append(channel)
-        content.append(type)
-        content.append(network)
+        content = bytearray([channel, type, network])
         if extended is not None:
             content.append(extended)
-        super().__init__(MESSAGE_CHANNEL_ASSIGN, content)
+        super().__init__(MESSAGE_CHANNEL_ASSIGN, bytes(content))
 
 
 class SetChannelIdMessage(Message):
     def __init__(self, channel: int, deviceNumber: int = 0, deviceType: int = 0, transType: int = 0):
-        content = bytearray()
-        content.append(channel)
-        content.extend(deviceNumber.to_bytes(2, byteorder='big'))
-        content.append(deviceType)
-        content.append(transType)
+        content = bytes([channel, deviceNumber.to_bytes(2, byteorder='big'), deviceType, transType])
         super().__init__(MESSAGE_CHANNEL_ID, content)
 
 
 class SetChannelRfFrequencyMessage(Message):
     def __init__(self, channel: int, frequency: int = 2457):
-        content = bytearray()
-        content.append(channel)
-        content.append(frequency - 2400)
+        content = bytes([channel, frequency - 2400])
         super().__init__(MESSAGE_CHANNEL_FREQUENCY, content)
 
 
 class OpenRxScanModeMessage(Message):
     def __init__(self):
-        super().__init__(OPEN_RX_SCAN_MODE, bytearray(1))
+        super().__init__(OPEN_RX_SCAN_MODE, b'1')
+
 
 class EnableExtendedMessagesMessage(Message):
     def __init__(self, enable: bool = True):
-        content = bytearray()
-        content.append(0x00)
-        content.append(int(enable))
+        content = bytes([0, int(enable)])
         super().__init__(MESSAGE_ENABLE_EXT_RX_MESSAGES, content)

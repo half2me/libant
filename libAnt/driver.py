@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from queue import Queue, Empty
+from queue import Queue
 from threading import Lock, Thread, Event
 
 from serial import Serial, SerialException, SerialTimeoutException
@@ -86,11 +86,11 @@ class Driver:
         pass
 
     @abstractmethod
-    def _read(self, count: int) -> bytearray:
+    def _read(self, count: int) -> bytes:
         pass
 
     @abstractmethod
-    def _write(self, data: bytearray) -> None:
+    def _write(self, data: bytes) -> None:
         pass
 
 
@@ -99,7 +99,7 @@ class SerialDriver(Driver):
     An implementation of a serial ANT+ device driver
     """
 
-    def __init__(self, device, baudRate=115200):
+    def __init__(self, device: str, baudRate: int = 115200):
         super().__init__()
         self._device = device
         self._baudRate = baudRate
@@ -126,12 +126,12 @@ class SerialDriver(Driver):
         self._serial.close()
         self._serial = None
 
-    def _read(self, count: int) -> bytearray:
+    def _read(self, count: int) -> bytes:
         return self._serial.read(count)
 
-    def _write(self, data: bytearray) -> None:
+    def _write(self, data: bytes) -> None:
         try:
-            count = self._serial.write(data)
+            self._serial.write(data)
             self._serial.flush()
         except SerialTimeoutException as e:
             raise DriverException(str(e))
@@ -216,13 +216,10 @@ class USBDriver(Driver):
         usb.util.dispose_resources(self._dev)
         self._dev = self._epOut = self._epIn = None
 
-    def _read(self, count: int) -> bytearray:
-        buf = bytearray()
-        for i in range(0, count):
-            buf.append(self._queue.get())
-        return buf
+    def _read(self, count: int) -> bytes:
+        return bytes([self._queue.get() for i in range(0, count)])
 
-    def _write(self, data: bytearray) -> None:
+    def _write(self, data: bytes) -> None:
         return self._epOut.write(data)
 
 
