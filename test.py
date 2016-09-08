@@ -21,6 +21,8 @@ with driver as d:
     print(d.read())
 
     #TODO:  Ext messages here
+    d.write(EnableExtendedMessagesMessage())
+    print(d.read())
 
     d.write(OpenRxScanModeMessage())
     print(d.read())

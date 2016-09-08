@@ -17,7 +17,8 @@ MESSAGE_CONFIG_ID_LIST = 0x5A  # [Channel number, List size, Exclude]
 MESSAGE_CHANNEL_TX_POWER = 0x60  # [Channel number, Transmit power]
 MESSAGE_LOW_PRIORITY_SEARCH_TIMEOUT = 0x63  # [Channel number, Search timeout]
 MESSAGE_PROXIMITY_SEARCH = 0x71
-MESSAGE_ENABLE_EXT_RX_MESSAGES = 0x66 # [0, enable]
+MESSAGE_ENABLE_EXT_RX_MESSAGES = 0x66 # [0, enable (0 or 1)]
+MESSAGE_LIB_CONFIG = 0x6E  # [0, libconfig]
 
 
 # Notification messages

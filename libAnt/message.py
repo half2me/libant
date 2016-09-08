@@ -84,3 +84,10 @@ class SetChannelRfFrequencyMessage(Message):
 class OpenRxScanModeMessage(Message):
     def __init__(self):
         super().__init__(OPEN_RX_SCAN_MODE, bytearray(1))
+
+class EnableExtendedMessagesMessage(Message):
+    def __init__(self, enable: bool = True):
+        content = bytearray()
+        content.append(0x00)
+        content.append(int(enable))
+        super().__init__(MESSAGE_ENABLE_EXT_RX_MESSAGES, content)
