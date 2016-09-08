@@ -20,7 +20,6 @@ with driver as d:
     d.write(SetChannelRfFrequencyMessage(0))
     print(d.read())
 
-    #TODO:  Ext messages here
     d.write(EnableExtendedMessagesMessage())
     print(d.read())
 
