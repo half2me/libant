@@ -59,6 +59,15 @@ class BroadcastMessage(Message):
 
         super().__init__(MESSAGE_CHANNEL_BROADCAST_DATA, bytes(c))
 
+    def __str__(self):
+        pass
+
+    def checksum(self) -> int:
+        pass
+
+    def encode(self) -> bytes:
+        pass
+
 
 class SystemResetMessage(Message):
     def __init__(self):
