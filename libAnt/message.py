@@ -37,32 +37,37 @@ class Message:
 
 
 class BroadcastMessage(Message):
-    def __init__(self, channel: int, content: bytes):
-        c = bytearray([channel])
-        c.extend(content[:8])
-        if len(content) > 8:  # Extended message
-            self._flag = content[8]
-            self._extendedContent = content[len(content) - 9:]
+    def __init__(self, type: int, content: bytes):
+        self.flag = None
+        self.deviceNumber = self.deviceType = self.transType = None
+        self.rssiMeasurementType = self.rssi = self.rssiThreshold = None
+        self.rxTimestamp = None
+
+        super().__init__(type, content)
+
+    def build(self, raw: bytes):
+        self._type = MESSAGE_CHANNEL_BROADCAST_DATA
+        self.channel = raw[0]
+        self._content = raw[1:9]
+        if len(raw) > 9:  # Extended message
+            self.flag = raw[9]
+            self.extendedContent = raw[10:]
             offset = 0
-            if self._flag & EXT_FLAG_CHANNEL_ID:
-                self._deviceNumber = int.from_bytes(self._extendedContent[:2], byteorder='little', signed=False)
-                self._deviceType = self._extendedContent[2]
-                self._transType = self._extendedContent[3]
+            if self.flag & EXT_FLAG_CHANNEL_ID:
+                self.deviceNumber = int.from_bytes(self.extendedContent[:2], byteorder='little', signed=False)
+                self.deviceType = self.extendedContent[2]
+                self.transType = self.extendedContent[3]
                 offset += 4
-            if self._flag & EXT_FLAG_RSSI:
-                rssi = self._extendedContent[len(self._extendedContent) - offset:]
-                self._rssiMeasurementType = rssi[0]
-                self._rssi = rssi[1]
-                self._rssiThreshold = rssi[2]
+            if self.flag & EXT_FLAG_RSSI:
+                rssi = self.extendedContent[offset:(offset+3)]
+                self.rssiMeasurementType = rssi[0]
+                self.rssi = rssi[1]
+                self.rssiThreshold = rssi[2]
                 offset += 3
-            if self._flag & EXT_FLAG_TIMESTAMP:
-                self._rxTimestamp = int.from_bytes(self._extendedContent[len(self._extendedContent) - offset:],
+            if self.flag & EXT_FLAG_TIMESTAMP:
+                self.rxTimestamp = int.from_bytes(self.extendedContent[offset:],
                                                    byteorder='little', signed=False)
-
-        super().__init__(MESSAGE_CHANNEL_BROADCAST_DATA, bytes(c))
-
-    def __str__(self):
-        pass
+        return self
 
     def checksum(self) -> int:
         pass

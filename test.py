@@ -30,4 +30,12 @@ with driver as d:
     print(d.read())
 
     while True:
-        print(d.read())
+        m = d.read()
+        b = BroadcastMessage(m.type, m.content)
+        print(m)
+        print(b)
+        b.build(m.content)
+        print(b)
+        print(b.deviceType)
+        print(b.deviceNumber)
+        print(b.transType)

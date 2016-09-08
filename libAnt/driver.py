@@ -160,7 +160,9 @@ class USBDriver(Driver):
         return "Closed"
 
     def _isOpen(self) -> bool:
-        return self._dev is not None
+        if self._dev is not None:
+            return self._loop.is_alive()
+        return False
 
     def _open(self) -> None:
         try:
@@ -242,4 +244,4 @@ class USBLoop(Thread):
                     self._queue.put(d)
             except usb.USBError as e:
                 if e.errno not in (60, 110):
-                    raise e
+                    self._stopper.set()

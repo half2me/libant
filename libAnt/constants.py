@@ -23,7 +23,6 @@ MESSAGE_LIB_CONFIG = 0x6E  # [0, libconfig]
 
 # Notification messages
 MESSAGE_STARTUP = 0x6F
-MESSAGE_STARTUP = 0x6F
 
 # Control messages
 MESSAGE_SYSTEM_RESET = 0x4A
