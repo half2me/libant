@@ -1,53 +1,80 @@
 import threading
-from time import sleep
+from queue import Queue, Empty
 
-from libAnt.constants import MESSAGE_TX_SYNC, MESSAGE_TX_SYNC_LEGACY
-from libAnt.message import Message
+from libAnt.driver import Driver, DriverException
+from libAnt.message import *
 
 
 class Network:
-    def __init__(self, key=b'\x00' * 8, name=None):
+    def __init__(self, key: bytes = b'\x00' * 8, name: str = None):
         self.key = key
         self.name = name
         self.number = 0
 
     def __str__(self):
-        return self.name + self.key
+        return self.name
 
 
 class Pump(threading.Thread):
-    def __init__(self, driver):
+    def __init__(self, driver: Driver, out: Queue, onSucces, onFailure):
         super().__init__()
-        self._stop = threading.Event()
+        self._stopper = threading.Event()
         self._driver = driver
+        self._out = out
+        self._waiters = []
+        self._onSuccess = onSucces
+        self._onFailure = onFailure
 
     def stop(self):
-        self._stop.set()
+        self._stopper.set()
 
     def stopped(self):
-        return self._stop.isSet()
+        return self._stopper.isSet()
 
     def run(self):
-        with self._driver as driver:
-            while not self._stop.is_set():
-                sync = driver.read(1)  # search for sync
-                print(sync)
-                if sync == MESSAGE_TX_SYNC:
-                    size = driver.read(1) # get size of message
-                    try:
-                        raw = bytearray(sync)
-                        raw.extend(size)
-                        raw.extend(driver.read(size + 2))
-                        message = Message.decode(raw)
-                    except Exception as e:
-                        pass
+        with self._driver as d:
+            while not self._stopper.is_set():
+                #  Write
+                try:
+                    outMsg = self._out.get(block=False)
+                    self._waiters.append(outMsg)
+                    d.write(outMsg)
+                except Empty:
+                    pass
+                except DriverException:
+                    self._stopper.set()
+                    break
+
+                # Read
+                try:
+                    msg = d.read()  # TODO: add timeout to driver
+                    if msg.type == MESSAGE_CHANNEL_EVENT:
+                        # This is a response to our outgoing message
+                        for w in self._waiters:
+                            if w.type == msg.content[1]:  # ACK
+                                self._waiters.remove(w)
+                                #  TODO: Call waiter callback from tuple (waiter, callback)
+                                break
+                    elif msg.type == MESSAGE_CHANNEL_BROADCAST_DATA:
+                        bmsg = BroadcastMessage(msg.type, msg.content).build(msg.content)
+                        try:
+                            self._onSuccess(bmsg)
+                        except Exception as e:
+                            self._onFailure(e)
+
+                except DriverException as e:
+                    self._stopper.set()
+                    self._onFailure(e)
+                    break
 
 
 class Node:
     def __init__(self, driver, name=None):
         self._driver = driver
         self._name = name
-        self._pump = Pump(driver)
+        self._out = Queue()
+        self._pump = None
+        self._configMessages = Queue()
 
     def __enter__(self):
         return self
@@ -55,8 +82,9 @@ class Node:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
 
-    def start(self):
+    def start(self, onSuccess, onFailure):
         if not self.isRunning():
+            self._pump = Pump(self._driver, self._out, onSuccess, onFailure)
             self._pump.start()
 
     def stop(self):
@@ -65,11 +93,9 @@ class Node:
             self._pump.join()
 
     def isRunning(self):
+        if self._pump is None:
+            return False
         return self._pump.is_alive()
-
-    def reset(self):
-        self.stop()
-        # TODO: reset device
 
     def getCapabilities(self):
         pass

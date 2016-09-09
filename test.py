@@ -36,6 +36,4 @@ with driver as d:
         print(b)
         b.build(m.content)
         print(b)
-        print(b.deviceType)
-        print(b.deviceNumber)
-        print(b.transType)
+        print(b.rxTimestamp)

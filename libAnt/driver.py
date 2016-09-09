@@ -47,7 +47,7 @@ class Driver:
         with self._lock:
             if self._isOpen():
                 self._close()
-                self._open()
+            self._open()
 
     def read(self) -> Message:
         if not self.isOpen():
@@ -219,7 +219,14 @@ class USBDriver(Driver):
         self._dev = self._epOut = self._epIn = None
 
     def _read(self, count: int) -> bytes:
-        return bytes([self._queue.get() for i in range(0, count)])
+        data = bytearray()
+        for i in range(0, count):
+            b = self._queue.get()
+            if b is None:
+                self._close()
+                raise DriverException("Device is closed!")
+            data.append(b)
+        return bytes(data)
 
     def _write(self, data: bytes) -> None:
         return self._epOut.write(data)
@@ -243,5 +250,7 @@ class USBLoop(Thread):
                 for d in data:
                     self._queue.put(d)
             except usb.USBError as e:
-                if e.errno not in (60, 110):
+                if e.errno not in (60, 110): # Timout errors
                     self._stopper.set()
+        #  We Put in an invalid byte so threads will realize the device is stopped
+        self._queue.put(None)

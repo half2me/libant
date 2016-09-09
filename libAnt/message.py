@@ -40,7 +40,7 @@ class BroadcastMessage(Message):
     def __init__(self, type: int, content: bytes):
         self.flag = None
         self.deviceNumber = self.deviceType = self.transType = None
-        self.rssiMeasurementType = self.rssi = self.rssiThreshold = None
+        self.rssiMeasurementType = self.rssi = self._rssiThreshold = None
         self.rxTimestamp = None
 
         super().__init__(type, content)
