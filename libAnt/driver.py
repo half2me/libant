@@ -165,6 +165,7 @@ class USBDriver(Driver):
         return False
 
     def _open(self) -> None:
+        print('USB OPEN')
         try:
             # find the first USB device that matches the filter
             self._dev = usb.core.find(idVendor=self._idVendor, idProduct=self._idProduct)
@@ -210,6 +211,7 @@ class USBDriver(Driver):
             raise DriverException(str(e))
 
     def _close(self) -> None:
+        print('USB CLOSE')
         if self._loop.is_alive():
             self._loop.stop()
             self._loop.join()
@@ -246,11 +248,11 @@ class USBLoop(Thread):
     def run(self) -> None:
         while not self._stopper.is_set():
             try:
-                data = self._ep.read(self._packetSize)
+                data = self._ep.read(self._packetSize, timeout=1000)
                 for d in data:
                     self._queue.put(d)
-            except usb.USBError as e:
-                if e.errno not in (60, 110): # Timout errors
+            except usb.core.USBError as e:
+                if e.errno not in (60, 110) and e.backend_error_code != -116: # Timout errors
                     self._stopper.set()
         #  We Put in an invalid byte so threads will realize the device is stopped
         self._queue.put(None)

@@ -1,5 +1,6 @@
 import threading
 from queue import Queue, Empty
+from time import sleep
 
 from libAnt.driver import Driver, DriverException
 from libAnt.message import *
@@ -32,40 +33,44 @@ class Pump(threading.Thread):
         return self._stopper.isSet()
 
     def run(self):
-        with self._driver as d:
-            while not self._stopper.is_set():
-                #  Write
-                try:
-                    outMsg = self._out.get(block=False)
-                    self._waiters.append(outMsg)
-                    d.write(outMsg)
-                except Empty:
-                    pass
-                except DriverException:
-                    self._stopper.set()
-                    break
-
-                # Read
-                try:
-                    msg = d.read()  # TODO: add timeout to driver
-                    if msg.type == MESSAGE_CHANNEL_EVENT:
-                        # This is a response to our outgoing message
-                        for w in self._waiters:
-                            if w.type == msg.content[1]:  # ACK
-                                self._waiters.remove(w)
-                                #  TODO: Call waiter callback from tuple (waiter, callback)
-                                break
-                    elif msg.type == MESSAGE_CHANNEL_BROADCAST_DATA:
-                        bmsg = BroadcastMessage(msg.type, msg.content).build(msg.content)
+        while not self.stopped():
+            try:
+                with self._driver as d:
+                    while not self.stopped():
+                        #  Write
                         try:
-                            self._onSuccess(bmsg)
-                        except Exception as e:
-                            self._onFailure(e)
+                            outMsg = self._out.get(block=False)
+                            self._waiters.append(outMsg)
+                            d.write(outMsg)
+                        except Empty:
+                            pass
+                        except DriverException:
+                            self._stopper.set()
+                            break
 
-                except DriverException as e:
-                    self._stopper.set()
-                    self._onFailure(e)
-                    break
+                        # Read
+                        try:
+                            msg = d.read()  # TODO: add timeout to driver
+                            if msg.type == MESSAGE_CHANNEL_EVENT:
+                                # This is a response to our outgoing message
+                                for w in self._waiters:
+                                    if w.type == msg.content[1]:  # ACK
+                                        self._waiters.remove(w)
+                                        #  TODO: Call waiter callback from tuple (waiter, callback)
+                                        break
+                            elif msg.type == MESSAGE_CHANNEL_BROADCAST_DATA:
+                                bmsg = BroadcastMessage(msg.type, msg.content).build(msg.content)
+                                try:
+                                    self._onSuccess(bmsg)
+                                except Exception as e:
+                                    self._onFailure(e)
+
+                        except DriverException as e:
+                            self._stopper.set()
+                            self._onFailure(e)
+                            break
+            except:
+                sleep(1)
 
 
 class Node:
