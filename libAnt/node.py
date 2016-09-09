@@ -87,6 +87,17 @@ class Node:
             self._pump = Pump(self._driver, self._out, onSuccess, onFailure)
             self._pump.start()
 
+    def enableRxScanMode(self, networkKey=ANTPLUS_NETWORK_KEY, channelType=CHANNEL_TYPE_ONEWAY_RECEIVE,
+                         frequency: int = 2457, rxTimestamp: bool = True, rssi: bool = True, channelId: bool = True):
+        self._out.put(SystemResetMessage())
+        self._out.put(SetNetworkKeyMessage(0, networkKey))
+        self._out.put(AssignChannelMessage(0, channelType))
+        self._out.put(SetChannelIdMessage(0))
+        self._out.put(SetChannelRfFrequencyMessage(0, frequency))
+        self._out.put(EnableExtendedMessagesMessage())
+        self._out.put(LibConfigMessage(rxTimestamp, rssi, channelId))
+        self._out.put(OpenRxScanModeMessage())
+
     def stop(self):
         if self.isRunning():
             self._pump.stop()
