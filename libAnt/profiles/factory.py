@@ -7,8 +7,8 @@ from libAnt.profiles.speed_cadence_profile import SpeedAndCadenceProfileMessage
 
 class Factory:
     types = {
-        71: SpeedAndCadenceProfileMessage,
-        140: PowerProfileMessage
+        121: SpeedAndCadenceProfileMessage,
+        11: PowerProfileMessage
     }
 
     def __init__(self, callback=None):
