@@ -1,3 +1,4 @@
+from libAnt.core import lazyproperty
 from libAnt.profiles.factory import ProfileMessage
 
 
@@ -11,41 +12,41 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
 
         if self.previous is not None:
             if self.speedEventTime == self.previous.speedEventTime:
-                self.staleSpeedCount[0] += 1
+                self.staleSpeedCounter[0] += 1
             else:
-                self.staleSpeedCount[0] = 0
+                self.staleSpeedCounter[0] = 0
 
             if self.cadenceEventTime == self.previous.cadenceEventTime:
-                self.staleCadenceCount[0] += 1
+                self.staleCadenceCounter[0] += 1
             else:
-                self.staleCadenceCount[0] = 0
+                self.staleCadenceCounter[0] = 0
 
     maxCadenceEventTime = 65536
     maxSpeedEventTime = 65536
     maxSpeedRevCount = 65536
     maxCadenceRevCount = 65536
-    maxStaleSpeedCount = 7
-    maxStaleCadenceCount = 7
+    maxstaleSpeedCounter = 7
+    maxstaleCadenceCounter = 7
 
     @lazyproperty
     def cadenceEventTime(self):
         """ Represents the time of the last valid bike cadence event (1/1024 sec) """
-        return (self.raw[2] << 8) | self.raw[1]
+        return (self.msg.content[1] << 8) | self.msg.content[0]
 
     @lazyproperty
     def cumulativeCadenceRevolutionCount(self):
         """ Represents the total number of pedal revolutions """
-        return (self.raw[4] << 8) | self.raw[3]
+        return (self.msg.content[3] << 8) | self.msg.content[2]
 
     @lazyproperty
     def speedEventTime(self):
         """ Represents the time of the last valid bike speed event (1/1024 sec) """
-        return (self.raw[6] << 8) | self.raw[5]
+        return (self.msg.content[5] << 8) | self.msg.content[4]
 
     @lazyproperty
     def cumulativeSpeedRevolutionCount(self):
         """ Represents the total number of wheel revolutions """
-        return (self.raw[8] << 8) | self.raw[7]
+        return (self.msg.content[7] << 8) | self.msg.content[6]
 
     @lazyproperty
     def speedEventTimeDiff(self):
@@ -97,7 +98,7 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
         if self.previous is None:
             return 0
         if self.speedEventTime == self.previous.speedEventTime:
-            if self.staleSpeedCount[0] > self.maxStaleSpeedCount:
+            if self.staleSpeedCounter[0] > self.maxstaleSpeedCounter:
                 return 0
             return self.previous.speed(c)
         return self.speedRevCountDiff * 1.024 * c / self.speedEventTimeDiff
@@ -110,7 +111,7 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
         if self.previous is None:
             return 0
         if self.cadenceEventTime == self.previous.cadenceEventTime:
-            if self.staleCadenceCount[0] > self.maxStaleCadenceCount:
+            if self.staleCadenceCounter[0] > self.maxstaleCadenceCounter:
                 return 0
             return self.previous.cadence
         return self.cadenceRevCountDiff * 1024 * 60 / self.cadenceEventTimeDiff

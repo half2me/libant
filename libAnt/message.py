@@ -41,7 +41,11 @@ class BroadcastMessage(Message):
         self.flag = None
         self.deviceNumber = self.deviceType = self.transType = None
         self.rssiMeasurementType = self.rssi = self._rssiThreshold = None
+        self.rssi = None
+        self.rssiThreshold = None
         self.rxTimestamp = None
+        self.channel = None
+        self.extendedContent = None
 
         super().__init__(type, content)
 
@@ -59,14 +63,14 @@ class BroadcastMessage(Message):
                 self.transType = self.extendedContent[3]
                 offset += 4
             if self.flag & EXT_FLAG_RSSI:
-                rssi = self.extendedContent[offset:(offset+3)]
+                rssi = self.extendedContent[offset:(offset + 3)]
                 self.rssiMeasurementType = rssi[0]
                 self.rssi = rssi[1]
                 self.rssiThreshold = rssi[2]
                 offset += 3
             if self.flag & EXT_FLAG_TIMESTAMP:
                 self.rxTimestamp = int.from_bytes(self.extendedContent[offset:],
-                                                   byteorder='little', signed=False)
+                                                  byteorder='little', signed=False)
         return self
 
     def checksum(self) -> int:
@@ -120,6 +124,7 @@ class EnableExtendedMessagesMessage(Message):
     def __init__(self, enable: bool = True):
         content = bytes([0, int(enable)])
         super().__init__(MESSAGE_ENABLE_EXT_RX_MESSAGES, content)
+
 
 class LibConfigMessage(Message):
     def __init__(self, rxTimestamp: bool = True, rssi: bool = True, channelId: bool = True):
