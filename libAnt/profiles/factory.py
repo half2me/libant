@@ -1,11 +1,63 @@
-from copy import deepcopy
+from threading import Lock
+
+from libAnt.message import BroadcastMessage
+from libAnt.profiles.power_profile import PowerProfileMessage
+from libAnt.profiles.speed_cadence_profile import SpeedAndCadenceProfileMessage
 
 
 class Factory:
-    pass
+    types = {
+        71: SpeedAndCadenceProfileMessage,
+        140: PowerProfileMessage
+    }
 
+    def __init__(self, callback=None):
+        self._filter = None
+        self._lock = Lock()
+        self._messages = {}
+        self._callback = callback
 
-class ProfileMessage():
-    def __init__(self, msg, previous):
-        self.previous = deepcopy(previous)
-        self.msg = deepcopy(msg)
+    def getLastMessage(self, deviceNumber, deviceType):
+        with self._lock:
+            if (deviceNumber, deviceType) in self._messages:
+                return self._messages[(deviceNumber, deviceType)]
+            return None
+
+    def enableFilter(self):
+        with self._lock:
+            if self._filter is None:
+                self._filter = {}
+
+    def disableFilter(self):
+        with self._lock:
+            if self._filter is not None:
+                self._filter = None
+
+    def clearFilter(self):
+        with self._lock:
+            if self._filter is not None:
+                self._filter.clear()
+
+    def addToFilter(self, deviceNumber: int):
+        with self._lock:
+            if self._filter is not None:
+                self._filter[deviceNumber] = True
+
+    def removeFromFilter(self, deviceNumber: int):
+        with self._lock:
+            if self._filter is not None:
+                if deviceNumber in self._filter:
+                    del self._filter[deviceNumber]
+
+    def parseMessage(self, msg: BroadcastMessage):
+        with self._lock:
+            if self._filter is not None:
+                if msg.deviceNumber not in self._filter:
+                    return
+            if msg.deviceNumber in self.types:
+                num = msg.deviceNumber
+                type = msg.deviceType
+                pmsg = self.types[num](msg, self._messages[(num, type)] if (num, type) in self._messages else None)
+                self._messages[(num, type)] = pmsg
+                if callable(self._callback):
+                    self._callback(pmsg)

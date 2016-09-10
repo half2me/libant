@@ -1,25 +1,25 @@
 from libAnt.core import lazyproperty
-from libAnt.profiles.factory import ProfileMessage
+from libAnt.profiles.profile import ProfileMessage
 
 
 class SpeedAndCadenceProfileMessage(ProfileMessage):
     """ Message from Speed & Cadence sensor """
 
-    def __init__(self, msg, previous, staleSpeedCounter, staleCadenceCounter):
+    def __init__(self, msg, previous):
         super().__init__(msg, previous)
-        self.staleSpeedCounter = staleSpeedCounter
-        self.staleCadenceCounter = staleCadenceCounter
+        self.staleSpeedCounter = previous.staleSpeedCounter if previous is not None else 0
+        self.staleCadenceCounter = previous.staleCadenceCounter if previous is not None else 0
 
         if self.previous is not None:
             if self.speedEventTime == self.previous.speedEventTime:
-                self.staleSpeedCounter[0] += 1
+                self.staleSpeedCounter += 1
             else:
-                self.staleSpeedCounter[0] = 0
+                self.staleSpeedCounter = 0
 
             if self.cadenceEventTime == self.previous.cadenceEventTime:
-                self.staleCadenceCounter[0] += 1
+                self.staleCadenceCounter += 1
             else:
-                self.staleCadenceCounter[0] = 0
+                self.staleCadenceCounter = 0
 
     maxCadenceEventTime = 65536
     maxSpeedEventTime = 65536
@@ -27,6 +27,9 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
     maxCadenceRevCount = 65536
     maxstaleSpeedCounter = 7
     maxstaleCadenceCounter = 7
+
+    def __str__(self):
+        return super().__str__() + ' Speed: ' + str(self.speed(2096)) + ' Cadence: ' + str(self.cadence)
 
     @lazyproperty
     def cadenceEventTime(self):
@@ -98,7 +101,7 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
         if self.previous is None:
             return 0
         if self.speedEventTime == self.previous.speedEventTime:
-            if self.staleSpeedCounter[0] > self.maxstaleSpeedCounter:
+            if self.staleSpeedCounter > self.maxstaleSpeedCounter:
                 return 0
             return self.previous.speed(c)
         return self.speedRevCountDiff * 1.024 * c / self.speedEventTimeDiff
@@ -111,7 +114,7 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
         if self.previous is None:
             return 0
         if self.cadenceEventTime == self.previous.cadenceEventTime:
-            if self.staleCadenceCounter[0] > self.maxstaleCadenceCounter:
+            if self.staleCadenceCounter > self.maxstaleCadenceCounter:
                 return 0
             return self.previous.cadence
         return self.cadenceRevCountDiff * 1024 * 60 / self.cadenceEventTimeDiff

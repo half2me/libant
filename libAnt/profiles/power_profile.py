@@ -1,6 +1,5 @@
 from libAnt.core import lazyproperty
-
-from libAnt.profiles.factory import ProfileMessage
+from libAnt.profiles.profile import ProfileMessage
 
 
 class PowerProfileMessage(ProfileMessage):
@@ -8,6 +7,9 @@ class PowerProfileMessage(ProfileMessage):
 
     maxAccumulatedPower = 65536
     maxEventCount = 256
+
+    def __str__(self):
+        return super().__str__() + ' Power: ' + str(self.averagePower)
 
     @lazyproperty
     def dataPageNumber(self):
