@@ -17,11 +17,12 @@ class Network:
 
 
 class Pump(threading.Thread):
-    def __init__(self, driver: Driver, out: Queue, onSucces, onFailure):
+    def __init__(self, driver: Driver, initMessages, out: Queue, onSucces, onFailure):
         super().__init__()
         self._stopper = threading.Event()
         self._driver = driver
         self._out = out
+        self._initMessages = initMessages
         self._waiters = []
         self._onSuccess = onSucces
         self._onFailure = onFailure
@@ -36,6 +37,11 @@ class Pump(threading.Thread):
         while not self.stopped():
             try:
                 with self._driver as d:
+                    # Init
+                    for m in self._initMessages:
+                        self._waiters.append(m)
+                        d.write(m)
+
                     while not self.stopped():
                         #  Write
                         try:
@@ -44,33 +50,25 @@ class Pump(threading.Thread):
                             d.write(outMsg)
                         except Empty:
                             pass
-                        except DriverException:
-                            self._stopper.set()
-                            break
 
                         # Read
-                        try:
-                            msg = d.read()  # TODO: add timeout to driver
-                            if msg.type == MESSAGE_CHANNEL_EVENT:
-                                # This is a response to our outgoing message
-                                for w in self._waiters:
-                                    if w.type == msg.content[1]:  # ACK
-                                        self._waiters.remove(w)
-                                        #  TODO: Call waiter callback from tuple (waiter, callback)
-                                        break
-                            elif msg.type == MESSAGE_CHANNEL_BROADCAST_DATA:
-                                bmsg = BroadcastMessage(msg.type, msg.content).build(msg.content)
-                                try:
-                                    self._onSuccess(bmsg)
-                                except Exception as e:
-                                    self._onFailure(e)
-
-                        except DriverException as e:
-                            self._stopper.set()
-                            self._onFailure(e)
-                            break
+                        msg = d.read()  # TODO: add timeout to driver
+                        if msg.type == MESSAGE_CHANNEL_EVENT:
+                            # This is a response to our outgoing message
+                            for w in self._waiters:
+                                if w.type == msg.content[1]:  # ACK
+                                    self._waiters.remove(w)
+                                    #  TODO: Call waiter callback from tuple (waiter, callback)
+                                    break
+                        elif msg.type == MESSAGE_CHANNEL_BROADCAST_DATA:
+                            bmsg = BroadcastMessage(msg.type, msg.content).build(msg.content)
+                            self._onSuccess(bmsg)
+            except Exception as e:
+                self._onFailure(e)
             except:
-                sleep(1)
+                pass
+            self._waiters.clear()
+            sleep(1)
 
 
 class Node:
@@ -78,6 +76,7 @@ class Node:
         self._driver = driver
         self._name = name
         self._out = Queue()
+        self._init = []
         self._pump = None
         self._configMessages = Queue()
 
@@ -89,19 +88,19 @@ class Node:
 
     def start(self, onSuccess, onFailure):
         if not self.isRunning():
-            self._pump = Pump(self._driver, self._out, onSuccess, onFailure)
+            self._pump = Pump(self._driver, self._init, self._out, onSuccess, onFailure)
             self._pump.start()
 
     def enableRxScanMode(self, networkKey=ANTPLUS_NETWORK_KEY, channelType=CHANNEL_TYPE_ONEWAY_RECEIVE,
                          frequency: int = 2457, rxTimestamp: bool = True, rssi: bool = True, channelId: bool = True):
-        self._out.put(SystemResetMessage())
-        self._out.put(SetNetworkKeyMessage(0, networkKey))
-        self._out.put(AssignChannelMessage(0, channelType))
-        self._out.put(SetChannelIdMessage(0))
-        self._out.put(SetChannelRfFrequencyMessage(0, frequency))
-        self._out.put(EnableExtendedMessagesMessage())
-        self._out.put(LibConfigMessage(rxTimestamp, rssi, channelId))
-        self._out.put(OpenRxScanModeMessage())
+        self._init.append(SystemResetMessage())
+        self._init.append(SetNetworkKeyMessage(0, networkKey))
+        self._init.append(AssignChannelMessage(0, channelType))
+        self._init.append(SetChannelIdMessage(0))
+        self._init.append(SetChannelRfFrequencyMessage(0, frequency))
+        self._init.append(EnableExtendedMessagesMessage())
+        self._init.append(LibConfigMessage(rxTimestamp, rssi, channelId))
+        self._init.append(OpenRxScanModeMessage())
 
     def stop(self):
         if self.isRunning():
