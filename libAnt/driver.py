@@ -40,8 +40,7 @@ class Driver:
 
     def close(self) -> None:
         with self._lock:
-            if self._isOpen():
-                self._close()
+            self._close()
 
     def reOpen(self) -> None:
         with self._lock:
@@ -161,11 +160,12 @@ class USBDriver(Driver):
 
     def _isOpen(self) -> bool:
         if self._dev is not None:
-            return self._loop.is_alive()
+            if self._loop is not None:
+                return self._loop.is_alive()
         return False
 
     def _open(self) -> None:
-        print('USB OPEN')
+        print('USB OPEN START')
         try:
             # find the first USB device that matches the filter
             self._dev = usb.core.find(idVendor=self._idVendor, idProduct=self._idProduct)
@@ -207,18 +207,23 @@ class USBDriver(Driver):
             self._queue = Queue()
             self._loop = USBLoop(self._epIn, self._packetSize, self._queue)
             self._loop.start()
+            print('USB OPEN SUCCESS')
         except IOError as e:
+            self._close()
             raise DriverException(str(e))
 
     def _close(self) -> None:
-        print('USB CLOSE')
-        if self._loop.is_alive():
-            self._loop.stop()
-            self._loop.join()
+        print('USB CLOSE START')
+        if self._loop is not None:
+            if self._loop.is_alive():
+                self._loop.stop()
+                self._loop.join()
         self._loop = None
-        usb.util.release_interface(self._dev, self._interfaceNumber)
+        print('USB releasing...')
+        #usb.util.release_interface(self._dev, self._interfaceNumber)
         usb.util.dispose_resources(self._dev)
         self._dev = self._epOut = self._epIn = None
+        print('USB CLOSE END')
 
     def _read(self, count: int) -> bytes:
         data = bytearray()

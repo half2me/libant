@@ -15,4 +15,4 @@ def eCallback(e):
 with Node(USBDriver(vid=0x0FCF, pid=0x1008), 'MyNode') as n:
     n.enableRxScanMode()
     n.start(callback, eCallback)
-    sleep(30)
+    sleep(5)
