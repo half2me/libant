@@ -2,7 +2,9 @@
 from time import sleep
 
 from libAnt.driver import USBDriver
-from libAnt.node import Node
+from libAnt.message import SetNetworkKeyMessage
+from libAnt.node import Node, SystemResetMessage
+
 
 def callback(msg):
     print(msg)
@@ -12,7 +14,9 @@ def callback(msg):
 def eCallback(e):
     print('Error: ' + str(e))
 
-with Node(USBDriver(vid=0x0FCF, pid=0x1008), 'MyNode') as n:
+
+driver = USBDriver(vid=0x0FCF, pid=0x1008)
+with Node(driver, 'MyNode') as n:
     n.enableRxScanMode()
     n.start(callback, eCallback)
-    sleep(5)
+    sleep(10)

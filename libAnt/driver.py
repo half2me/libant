@@ -7,7 +7,7 @@ from serial import Serial, SerialException, SerialTimeoutException
 import usb
 
 from libAnt.constants import MESSAGE_TX_SYNC
-from libAnt.message import Message
+from libAnt.message import Message, SystemResetMessage
 
 
 class DriverException(Exception):
@@ -40,7 +40,8 @@ class Driver:
 
     def close(self) -> None:
         with self._lock:
-            self._close()
+            if self._isOpen:
+                self._close()
 
     def reOpen(self) -> None:
         with self._lock:
@@ -152,6 +153,7 @@ class USBDriver(Driver):
         self._packetSize = 0x20
         self._queue = None
         self._loop = None
+        self._driver_open = False
 
     def __str__(self):
         if self.isOpen():
@@ -159,10 +161,7 @@ class USBDriver(Driver):
         return "Closed"
 
     def _isOpen(self) -> bool:
-        if self._dev is not None:
-            if self._loop is not None:
-                return self._loop.is_alive()
-        return False
+        return self._driver_open
 
     def _open(self) -> None:
         print('USB OPEN START')
@@ -207,6 +206,7 @@ class USBDriver(Driver):
             self._queue = Queue()
             self._loop = USBLoop(self._epIn, self._packetSize, self._queue)
             self._loop.start()
+            self._driver_open = True
             print('USB OPEN SUCCESS')
         except IOError as e:
             self._close()
@@ -219,10 +219,13 @@ class USBDriver(Driver):
                 self._loop.stop()
                 self._loop.join()
         self._loop = None
-        print('USB releasing...')
-        #usb.util.release_interface(self._dev, self._interfaceNumber)
-        usb.util.dispose_resources(self._dev)
+        try:
+            self._dev.reset()
+            usb.util.dispose_resources(self._dev)
+        except:
+            pass
         self._dev = self._epOut = self._epIn = None
+        self._driver_open = False
         print('USB CLOSE END')
 
     def _read(self, count: int) -> bytes:

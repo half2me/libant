@@ -82,7 +82,7 @@ class SystemResetMessage(Message):
 
 
 class SetNetworkKeyMessage(Message):
-    def __init__(self, channel: int, key: bytes):
+    def __init__(self, channel: int, key: bytes = ANTPLUS_NETWORK_KEY):
         content = bytearray([channel])
         content.extend(key)
         super().__init__(MESSAGE_NETWORK_KEY, bytes(content))

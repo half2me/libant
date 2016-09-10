@@ -37,7 +37,10 @@ class Pump(threading.Thread):
         while not self.stopped():
             try:
                 with self._driver as d:
-                    # Init
+                    # Startup
+                    rst = SystemResetMessage()
+                    self._waiters.append(rst)
+                    d.write(rst)
                     for m in self._initMessages:
                         self._waiters.append(m)
                         d.write(m)
