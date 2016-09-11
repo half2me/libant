@@ -9,6 +9,8 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
         super().__init__(msg, previous)
         self.staleSpeedCounter = previous.staleSpeedCounter if previous is not None else 0
         self.staleCadenceCounter = previous.staleCadenceCounter if previous is not None else 0
+        self.totalRevolutions = previous.totalRevolutions + self.cadenceRevCountDiff if previous is not None else 0
+        self.totalSpeedRevolutions = previous.totalSpeedRevolutions + self.speedRevCountDiff if previous is not None else 0
 
         if self.previous is not None:
             if self.speedEventTime == self.previous.speedEventTime:
@@ -29,7 +31,12 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
     maxstaleCadenceCounter = 7
 
     def __str__(self):
-        return super().__str__() + ' Speed: {:.2f}m/s Cadence: {:.2f}rpm'.format(self.speed(2096), self.cadence)
+        ret = '{} Speed: {:.2f}m/s (avg: {:.2f}m/s)\n'.format(super().__str__(), self.speed(2096),
+                                                              self.averageSpeed(2096))
+        ret += '{} Cadence: {:.2f}rpm (avg: {:.2f}rpm)\n'.format(super().__str__(), self.cadence, self.averageCadence)
+        ret += '{} Total Distance: {:.2f}m\n'.format(super().__str__(), self.totalDistance(2096))
+        ret += '{} Total Revolutions: {:d}'.format(super().__str__(), self.totalRevolutions)
+        return ret
 
     @lazyproperty
     def cadenceEventTime(self):
@@ -74,7 +81,7 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
     @lazyproperty
     def speedRevCountDiff(self):
         if self.previous is None:
-            return None
+            return 0
         elif self.cumulativeSpeedRevolutionCount < self.previous.cumulativeSpeedRevolutionCount:
             # Rollover
             return (
@@ -85,7 +92,7 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
     @lazyproperty
     def cadenceRevCountDiff(self):
         if self.previous is None:
-            return None
+            return 0
         elif self.cumulativeCadenceRevolutionCount < self.previous.cumulativeCadenceRevolutionCount:
             # Rollover
             return (
@@ -106,6 +113,20 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
             return self.previous.speed(c)
         return self.speedRevCountDiff * 1.024 * c / self.speedEventTimeDiff
 
+    def distance(self, c):
+        """
+        :param c: circumference of the wheel (mm)
+        :return: The distance since the last message (m)
+        """
+        return self.speedRevCountDiff * 1.024 * c
+
+    def totalDistance(self, c):
+        """
+        :param c: circumference of the wheel (mm)
+        :return: The total distance since the first message (m)
+        """
+        return self.totalSpeedRevolutions * c / 1000
+
     @lazyproperty
     def cadence(self):
         """
@@ -118,3 +139,23 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
                 return 0
             return self.previous.cadence
         return self.cadenceRevCountDiff * 1024 * 60 / self.cadenceEventTimeDiff
+
+    @lazyproperty
+    def averageCadence(self):
+        """
+        Returns the average cadence since the first message
+        :return: RPM
+        """
+        if self.firstTimestamp == self.timestamp:
+            return self.cadence
+        return self.totalRevolutions * 60 / (self.timestamp - self.firstTimestamp)
+
+    def averageSpeed(self, c):
+        """
+        Returns the average speed since the first message
+        :param c: circumference of the wheel (mm)
+        :return: m/s
+        """
+        if self.firstTimestamp == self.timestamp:
+            return self.speed(c)
+        return self.totalDistance(c) / (self.timestamp - self.firstTimestamp)
