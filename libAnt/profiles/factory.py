@@ -17,12 +17,6 @@ class Factory:
         self._messages = {}
         self._callback = callback
 
-    def getLastMessage(self, deviceNumber, deviceType):
-        with self._lock:
-            if (deviceNumber, deviceType) in self._messages:
-                return self._messages[(deviceNumber, deviceType)]
-            return None
-
     def enableFilter(self):
         with self._lock:
             if self._filter is None:
@@ -54,10 +48,10 @@ class Factory:
             if self._filter is not None:
                 if msg.deviceNumber not in self._filter:
                     return
-            if msg.deviceNumber in self.types:
+            if msg.deviceType in Factory.types:
                 num = msg.deviceNumber
                 type = msg.deviceType
-                pmsg = self.types[num](msg, self._messages[(num, type)] if (num, type) in self._messages else None)
+                pmsg = self.types[type](msg, self._messages[(num, type)] if (num, type) in self._messages else None)
                 self._messages[(num, type)] = pmsg
                 if callable(self._callback):
                     self._callback(pmsg)

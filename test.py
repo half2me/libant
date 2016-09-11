@@ -11,7 +11,7 @@ def callback(msg):
 
 
 def eCallback(e):
-    print('Error: ' + str(e))
+    print(e)
 
 
 with Node(USBDriver(vid=0x0FCF, pid=0x1008), 'MyNode') as n:
@@ -19,5 +19,4 @@ with Node(USBDriver(vid=0x0FCF, pid=0x1008), 'MyNode') as n:
 
     n.enableRxScanMode()
     n.start(f.parseMessage, eCallback)
-
-    sleep(30)
+    sleep(30)  # Listen for 30sec

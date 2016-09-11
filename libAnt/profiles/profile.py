@@ -5,7 +5,7 @@ from libAnt.message import BroadcastMessage
 
 class ProfileMessage:
     def __init__(self, msg, previous):
-        self.previous = deepcopy(previous)
+        self.previous = previous
         self.msg = deepcopy(msg)
 
     def __str__(self):

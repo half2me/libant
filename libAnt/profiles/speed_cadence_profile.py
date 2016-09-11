@@ -29,7 +29,7 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
     maxstaleCadenceCounter = 7
 
     def __str__(self):
-        return super().__str__() + ' Speed: ' + str(self.speed(2096)) + ' Cadence: ' + str(self.cadence)
+        return super().__str__() + ' Speed: ' + str(self.speed(2096)) + 'm/s Cadence: ' + str(self.cadence) + 'rpm'
 
     @lazyproperty
     def cadenceEventTime(self):
