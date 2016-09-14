@@ -118,7 +118,7 @@ class SpeedAndCadenceProfileMessage(ProfileMessage):
         :param c: circumference of the wheel (mm)
         :return: The distance since the last message (m)
         """
-        return self.speedRevCountDiff * 1.024 * c
+        return self.speedRevCountDiff * 1.024 * c / 1000
 
     def totalDistance(self, c):
         """

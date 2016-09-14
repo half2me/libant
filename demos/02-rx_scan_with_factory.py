@@ -12,7 +12,6 @@ def callback(msg):
 
 def eCallback(e):
     print(e)
-    raise e
 
 
 with Node(USBDriver(vid=0x0FCF, pid=0x1008), 'MyNode') as n:
