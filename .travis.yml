@@ -21,6 +21,7 @@ matrix:
 sudo: false
 notifications:
   email: false
+script: echo hello
 
 deploy:
   provider: pypi
