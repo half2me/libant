@@ -2,9 +2,6 @@
 
 from distutils.core import setup
 
-with open('requirements.txt') as f:
-    requirements = f.read().splitlines()
-
 setup(
     name='LibAnt',
     packages=['libAnt', 'libAnt.profiles'],
@@ -15,5 +12,5 @@ setup(
     url='https://github.com/half2me/libAnt',
     download_url='https://github.com/half2me/libAnt/tarball/0.1.2',
     keywords = ['ant', 'antplus', 'ant+', 'antfs', 'thisisant'],
-    install_requires=requirements,
+    install_requires=['pyusb>=1.0.0', 'pyserial>=3.1.1'],
 )

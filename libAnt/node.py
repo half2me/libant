@@ -2,7 +2,7 @@ import threading
 from queue import Queue, Empty
 from time import sleep
 
-from libAnt.driver import Driver, DriverException
+from libAnt.driver import Driver
 from libAnt.message import *
 
 
