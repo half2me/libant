@@ -4,10 +4,6 @@ cache:
   - "$HOME/.cache/pip"
   - "$HOME/.pyenv"
 python:
-  - "2.7"
-  - "pypy"
-  - "3.3"
-  - "3.4"
   - "3.5"
   - "nightly"
   - "pypy3"
