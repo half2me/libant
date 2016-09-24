@@ -4,10 +4,6 @@ cache:
   - "$HOME/.cache/pip"
   - "$HOME/.pyenv"
 python:
-  - "2.7"
-  - "pypy"
-  - "3.3"
-  - "3.4"
   - "3.5"
   - "nightly"
   - "pypy3"
@@ -15,12 +11,20 @@ python:
 install:
   - pip install -r requirements.txt
   - python setup.py -q install
-  
-# command to run tests
-script: make test
 
 matrix:
   fast_finish: true
 sudo: false
 notifications:
   email: false
+script: echo hello
+
+deploy:
+  provider: pypi
+  user: halftome
+  password:
+    secure: zcIHP2xcT7WsDjXQxyqF2M0suh6gJqBHDn5iISBRf9tWlq8yVzNLg3eKP3jRjj79nDl5v/tDLJGuW6c8jMsRe3kNuoVwGTLj4VAu/PTj8qXdWMoyUIvWGEzJh7T4qglLsHe+S7Am8raKVGWMDNuJFzeeJd8zybr0ktnNVNHmP2/HH7et3v4OnBCQZfVJlfkeQKf+tHdVNAGYXyGIxs+LNx2SuEhpIx9GU6tpZP/uafb7dmj1K/Xlc5v6hVnWt+60dO3lW37drxVVOaBzQRO6/U6T136bn68yu6IlKU/3x0AiWJKOrNw1ULOzrUVQxl8Mg9i/lChR+WVHexRSYsZoWHzhMA01pEa6seILFBVyKtg7MYe1tFrSnJyVntct9rzHoDizR/2jwlPXZAsqQ2U9UFw3rS3fo3S3CADRnj4hwdkc+af+3t2NrhlOqgpmIw4XL9CZCKl0Gvk8rwgP8DXp78ATpQsuJbuiqWiwNPWiaj7XupnVZYd8Vsjc59si0XNbQ1G00ggyPgWrOaKsieGlggApXClq+yoshY8LbDRfZ3ZJ+z9Wxu8lNquOdXEfms1dwz1UppyF6OS4YrTtoUlH1jGcaVAE2gB6Cmpfpz9vtnQSsPjtO/xotXLDE4f36zFO0J7FnnfxnwWtjBlsSyjUqME6u2RJb+yWvYAO3bN6E3U=
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: half2me/libant

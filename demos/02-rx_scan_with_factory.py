@@ -19,4 +19,4 @@ with Node(USBDriver(vid=0x0FCF, pid=0x1008), 'MyNode') as n:
 
     n.enableRxScanMode()
     n.start(f.parseMessage, eCallback)
-    sleep(30)  # Listen for 30sec
+    sleep(60)  # Listen for 1min
