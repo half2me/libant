@@ -55,3 +55,7 @@ class Factory:
                 self._messages[(num, type)] = pmsg
                 if callable(self._callback):
                     self._callback(pmsg)
+
+    def reset(self):
+        with self._lock:
+            self._messages = {}
