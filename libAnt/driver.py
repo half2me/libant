@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from queue import Queue
+from queue import Queue, Empty
 from threading import Lock, Thread, Event
 
 from serial import Serial, SerialException, SerialTimeoutException
@@ -49,19 +49,19 @@ class Driver:
                 self._close()
             self._open()
 
-    def read(self) -> Message:
+    def read(self, timeout=None) -> Message:
         if not self.isOpen():
             raise DriverException("Device is closed")
 
         with self._lock:
             while True:
-                sync = self._read(1)[0]
+                sync = self._read(1, timeout=timeout)[0]
                 if sync is not MESSAGE_TX_SYNC:
                     continue
-                len = self._read(1)[0]
-                type = self._read(1)[0]
-                data = self._read(len)
-                chk = self._read(1)[0]
+                len = self._read(1, timeout=timeout)[0]
+                type = self._read(1, timeout=timeout)[0]
+                data = self._read(len, timeout=timeout)
+                chk = self._read(1, timeout=timeout)[0]
                 msg = Message(type, data)
                 if msg.checksum() == chk:
                     return msg
@@ -86,7 +86,7 @@ class Driver:
         pass
 
     @abstractmethod
-    def _read(self, count: int) -> bytes:
+    def _read(self, count: int, timeout=None) -> bytes:
         pass
 
     @abstractmethod
@@ -126,8 +126,8 @@ class SerialDriver(Driver):
         self._serial.close()
         self._serial = None
 
-    def _read(self, count: int) -> bytes:
-        return self._serial.read(count)
+    def _read(self, count: int, timeout=None) -> bytes:
+        return self._serial.read(count, timeout=timeout)
 
     def _write(self, data: bytes) -> None:
         try:
@@ -228,10 +228,10 @@ class USBDriver(Driver):
         self._driver_open = False
         print('USB CLOSE END')
 
-    def _read(self, count: int) -> bytes:
+    def _read(self, count: int, timeout=None) -> bytes:
         data = bytearray()
         for i in range(0, count):
-            b = self._queue.get()
+            b = self._queue.get(timeout=timeout)
             if b is None:
                 self._close()
                 raise DriverException("Device is closed!")
