@@ -55,17 +55,20 @@ class Pump(threading.Thread):
                             pass
 
                         # Read
-                        msg = d.read()  # TODO: add timeout to driver
-                        if msg.type == MESSAGE_CHANNEL_EVENT:
-                            # This is a response to our outgoing message
-                            for w in self._waiters:
-                                if w.type == msg.content[1]:  # ACK
-                                    self._waiters.remove(w)
-                                    #  TODO: Call waiter callback from tuple (waiter, callback)
-                                    break
-                        elif msg.type == MESSAGE_CHANNEL_BROADCAST_DATA:
-                            bmsg = BroadcastMessage(msg.type, msg.content).build(msg.content)
-                            self._onSuccess(bmsg)
+                        try:
+                            msg = d.read(timeout=1)
+                            if msg.type == MESSAGE_CHANNEL_EVENT:
+                                # This is a response to our outgoing message
+                                for w in self._waiters:
+                                    if w.type == msg.content[1]:  # ACK
+                                        self._waiters.remove(w)
+                                        #  TODO: Call waiter callback from tuple (waiter, callback)
+                                        break
+                            elif msg.type == MESSAGE_CHANNEL_BROADCAST_DATA:
+                                bmsg = BroadcastMessage(msg.type, msg.content).build(msg.content)
+                                self._onSuccess(bmsg)
+                        except Empty:
+                            pass
             except Exception as e:
                 self._onFailure(e)
             except:
