@@ -19,7 +19,7 @@ class Driver:
     The driver provides an interface to read and write raw data to and from an ANT+ capable hardware device
     """
 
-    def __init__(self):
+    def __init__(self, debug=False):
         self._lock = Lock()
 
     def __enter__(self):
@@ -63,6 +63,7 @@ class Driver:
                 data = self._read(len, timeout=timeout)
                 chk = self._read(1, timeout=timeout)[0]
                 msg = Message(type, data)
+                # TODO: save to file
                 if msg.checksum() == chk:
                     return msg
 
@@ -99,8 +100,8 @@ class SerialDriver(Driver):
     An implementation of a serial ANT+ device driver
     """
 
-    def __init__(self, device: str, baudRate: int = 115200):
-        super().__init__()
+    def __init__(self, device: str, baudRate: int = 115200, debug=False):
+        super().__init__(debug=debug)
         self._device = device
         self._baudRate = baudRate
         self._serial = None
@@ -142,8 +143,8 @@ class USBDriver(Driver):
     An implementation of a USB ANT+ device driver
     """
 
-    def __init__(self, vid, pid):
-        Driver.__init__(self)
+    def __init__(self, vid, pid, debug=False):
+        Driver.__init__(self, debug=debug)
         self._idVendor = vid
         self._idProduct = pid
         self._dev = None
