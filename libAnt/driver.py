@@ -5,8 +5,9 @@ from threading import Lock, Thread, Event
 from serial import Serial, SerialException, SerialTimeoutException
 
 import usb
+import time
 
-from libAnt.constants import MESSAGE_TX_SYNC
+from libAnt.constants import MESSAGE_TX_SYNC, MESSAGE_CHANNEL_BROADCAST_DATA
 from libAnt.message import Message, SystemResetMessage
 
 
@@ -21,6 +22,7 @@ class Driver:
 
     def __init__(self, debug=False):
         self._lock = Lock()
+        self._debug = debug
 
     def __enter__(self):
         self.open()
@@ -63,7 +65,10 @@ class Driver:
                 data = self._read(len, timeout=timeout)
                 chk = self._read(1, timeout=timeout)[0]
                 msg = Message(type, data)
-                # TODO: save to file
+                if self._debug:
+                    logMsg = bytes([sync, len, type, data, chk])
+                    timestamp = time.time()
+                    # TODO: save to file
                 if msg.checksum() == chk:
                     return msg
 
@@ -144,7 +149,7 @@ class USBDriver(Driver):
     """
 
     def __init__(self, vid, pid, debug=False):
-        Driver.__init__(self, debug=debug)
+        super().__init__(debug=debug)
         self._idVendor = vid
         self._idProduct = pid
         self._dev = None
@@ -265,3 +270,30 @@ class USBLoop(Thread):
                     self._stopper.set()
         #  We Put in an invalid byte so threads will realize the device is stopped
         self._queue.put(None)
+
+class DummyDriver(Driver):
+    def __init__(self):
+        self._isopen = False
+        self._data = Queue()
+        msg1 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\x00\x00\x00\x00\x00\x00\x00').encode()
+        for b in msg1:
+            self._data.put(b)
+        msg2 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\x00\x00\x00\x00\x00\x00\x00').encode()
+        for b in msg2:
+            self._data.put(b)
+        super().__init__(debug=True)
+
+    def _isOpen(self) -> bool:
+        return self._isopen
+
+    def _close(self) -> None:
+        self._isopen = False
+
+    def _read(self, count: int, timeout=None) -> bytes:
+        return self._data.get(timeout=timeout)
+
+    def _open(self) -> None:
+        self._isopen = True
+
+    def _write(self, data: bytes) -> None:
+        pass
