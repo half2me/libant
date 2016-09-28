@@ -10,10 +10,10 @@ def callback(msg):
 
 
 def eCallback(e):
-    print(e)
+    raise e
 
 
 with Node(DummyDriver(), 'MyNode') as n:
     n.enableRxScanMode()
     n.start(callback, eCallback)
-    sleep(30)  # Listen for 30sec
+    sleep(1)  # Listen for 30sec
