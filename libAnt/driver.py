@@ -25,6 +25,7 @@ class Driver:
     def __init__(self, debug=False):
         self._lock = Lock()
         self._debug = debug
+        self.logfile = 'log.pcap'
 
     def __enter__(self):
         self.open()
@@ -32,10 +33,6 @@ class Driver:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-    def byteString2String(self, byteString) -> str:
-        return binascii.a2b_hex(''.join(byteString.split()))
-
 
     def isOpen(self) -> bool:
         with self._lock:
@@ -57,14 +54,12 @@ class Driver:
 
                 pcap_global_header = Struct('<4shh4s4s4s4s')
 
-                self.logfile = open('log.pcap', 'wb')
-                self.logfile.write(pcap_global_header.pack(magic_number, version_major, version_minor, thiszone, sigfigs, snaplen, network))
+                with open(self.logfile, 'wb') as log:
+                    log.write(pcap_global_header.pack(magic_number, version_major, version_minor, thiszone, sigfigs, snaplen, network))
 
     def close(self) -> None:
         with self._lock:
             if self._isOpen:
-                if self.logfile:
-                        self.logfile.close()
                 self._close()
 
     def reOpen(self) -> None:
@@ -104,8 +99,9 @@ class Driver:
 
                     pcap_packet_header = Struct('<4s4sll')
 
-                    self.logfile.write(pcap_packet_header.pack(ts_sec, ts_usec, incl_len, orig_len))
-                    self.logfile.write(logMsg)
+                    with open(self.logfile, 'ab') as log:
+                        log.write(pcap_packet_header.pack(ts_sec, ts_usec, incl_len, orig_len))
+                        log.write(logMsg)
 
                 if msg.checksum() == chk:
                     return msg
@@ -332,6 +328,33 @@ class DummyDriver(Driver):
         for i in range(0, count):
             data.append(self._data.get(timeout=timeout))
         return bytes(data)
+
+    def _open(self) -> None:
+        self._isopen = True
+
+    def _write(self, data: bytes) -> None:
+        pass
+
+class PcapDriver(Driver):
+    def __init__(self):
+        super().__init__(debug=True)
+        self._isopen = False
+
+        with open(self.logfile, 'rb') as log:
+            data = log.read()
+
+        print(data)
+
+    def _isOpen(self) -> bool:
+        return self._isopen
+
+    def _close(self) -> None:
+        self._isopen = False
+        if self.logfile:
+            self.logfile.close()
+
+    def _read(self, count: int, timeout=None) -> bytes:
+        return bytes(1)
 
     def _open(self) -> None:
         self._isopen = True
