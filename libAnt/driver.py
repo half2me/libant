@@ -7,6 +7,7 @@ from serial import Serial, SerialException, SerialTimeoutException
 import usb
 import time
 import binascii
+from struct import *
 
 from libAnt.constants import MESSAGE_TX_SYNC, MESSAGE_CHANNEL_BROADCAST_DATA
 from libAnt.message import Message, SystemResetMessage
@@ -46,19 +47,18 @@ class Driver:
                 self._open()
             if self._debug:
                 # write pcap global header
-                # Global header for pcap 2.4
-                pcap_global_header = ('D4 C3 B2 A1'
-                                      '02 00'  # File format major revision (i.e. pcap <2>.4)
-                                      '04 00'  # File format minor revision (i.e. pcap 2.<4>)
-                                      '00 00 00 00'
-                                      '00 00 00 00'
-                                      'FF 00 00 00'
-                                      '01 00 00 00')
+                magic_number = b'\xD4\xC3\xB2\xA1'
+                version_major = 2
+                version_minor = 4
+                thiszone = b'\x00\x00\x00\x00'
+                sigfigs = b'\x00\x00\x00\x00'
+                snaplen = b'\xFF\x00\x00\x00'
+                network = b'\x01\x00\x00\x00'
+
+                pcap_global_header = Struct('<4shh4s4s4s4s')
+
                 self.logfile = open('log.pcap', 'wb')
-                self.logfile.write(self.byteString2String(pcap_global_header))
-
-
-
+                self.logfile.write(pcap_global_header.pack(magic_number, version_major, version_minor, thiszone, sigfigs, snaplen, network))
 
     def close(self) -> None:
         with self._lock:
@@ -95,28 +95,17 @@ class Driver:
                     logMsg = bytearray([sync, length, type])
                     logMsg.extend(data)
                     logMsg.append(chk)
-                    timestamp = time.time()
+                    # timestamp = time.time()
 
-                    # calculate frame size
-                    print(logMsg.hex())
-                    print(len(self.byteString2String(logMsg.hex())))
-                    print(len(logMsg.hex()))
+                    ts_sec = b'\xAA\x77\x9F\x47'
+                    ts_usec = b'\x90\xA2\x04\x00'
+                    incl_len = len(logMsg)
+                    orig_len = incl_len
 
-                    # pcap packet header that must preface every packet
-                    pcap_packet_header = ('AA 77 9F 47'
-                                          '90 A2 04 00'
-                                          'XX XX XX XX'  # Frame Size (little endian)
-                                          'YY YY YY YY')  # Frame Size (little endian)
+                    pcap_packet_header = Struct('<4s4sll')
 
-                    pcap_len = len(self.byteString2String(logMsg.hex()))
-                    print(pcap_len)
-                    hex_str = "%08x" % pcap_len
-                    reverse_hex_str = hex_str[6:] + hex_str[4:6] + hex_str[2:4] + hex_str[:2]
-                    pcaph = pcap_packet_header.replace('XX XX XX XX', reverse_hex_str)
-                    pcaph = pcaph.replace('YY YY YY YY', reverse_hex_str)
-
-                    self.logfile.write(self.byteString2String(pcaph))
-                    self.logfile.write(self.byteString2String(logMsg.hex()))
+                    self.logfile.write(pcap_packet_header.pack(ts_sec, ts_usec, incl_len, orig_len))
+                    self.logfile.write(logMsg)
 
                 if msg.checksum() == chk:
                     return msg
