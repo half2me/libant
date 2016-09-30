@@ -359,22 +359,22 @@ class PcapDriver(Driver):
 
     def _read(self, count: int, timeout=None) -> bytes:
         buffer = bytearray()
-        sync = self.log.read(1)
-        while sync != b'':
+        sync = self.log.read(1)[0]
+        while True:
             sync = self.log.read(1)[0]
             if sync is not MESSAGE_TX_SYNC:
                 continue
             length = self.log.read(1)[0]
             type = self.log.read(1)[0]
-            data = self.log.read(8)
+            data = self.log.read(length)
             chk = self.log.read(1)[0]
 
             packet = bytearray([sync, length, type])
             packet.extend(data)
             packet.append(chk)
-            print(packet)
+            print("packet: ", packet)
             buffer.extend(packet)
-            print(buffer)
+            print("buffer: ", buffer)
 
         return bytes(buffer)
 
