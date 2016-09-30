@@ -2,6 +2,7 @@ from abc import abstractmethod
 from queue import Queue, Empty
 from threading import Lock, Thread, Event
 
+import math
 from serial import Serial, SerialException, SerialTimeoutException
 
 import usb
@@ -26,6 +27,7 @@ class Driver:
         self._lock = Lock()
         self._debug = debug
         self.logfile = 'log.pcap'
+        self._openTime = None
 
     def __enter__(self):
         self.open()
@@ -42,20 +44,21 @@ class Driver:
         with self._lock:
             if not self._isOpen():
                 self._open()
-            if self._debug:
-                # write pcap global header
-                magic_number = b'\xD4\xC3\xB2\xA1'
-                version_major = 2
-                version_minor = 4
-                thiszone = b'\x00\x00\x00\x00'
-                sigfigs = b'\x00\x00\x00\x00'
-                snaplen = b'\xFF\x00\x00\x00'
-                network = b'\x01\x00\x00\x00'
+                self._openTime = time.time()
+                if self._debug:
+                    # write pcap global header
+                    magic_number = b'\xD4\xC3\xB2\xA1'
+                    version_major = 2
+                    version_minor = 4
+                    thiszone = b'\x00\x00\x00\x00'
+                    sigfigs = b'\x00\x00\x00\x00'
+                    snaplen = b'\xFF\x00\x00\x00'
+                    network = b'\x01\x00\x00\x00'
 
-                pcap_global_header = Struct('<4shh4s4s4s4s')
+                    pcap_global_header = Struct('<4shh4s4s4s4s')
 
-                with open(self.logfile, 'wb') as log:
-                    log.write(pcap_global_header.pack(magic_number, version_major, version_minor, thiszone, sigfigs, snaplen, network))
+                    with open(self.logfile, 'wb') as log:
+                        log.write(pcap_global_header.pack(magic_number, version_major, version_minor, thiszone, sigfigs, snaplen, network))
 
     def close(self) -> None:
         with self._lock:
@@ -90,10 +93,11 @@ class Driver:
                     logMsg = bytearray([sync, length, type])
                     logMsg.extend(data)
                     logMsg.append(chk)
-                    # timestamp = time.time()
+                    timestamp = time.time() - self._openTime
+                    frac, whole = math.modf(timestamp)
 
-                    ts_sec = b'\xAA\x77\x9F\x47'
-                    ts_usec = b'\x90\xA2\x04\x00'
+                    ts_sec = int(whole).to_bytes(4, byteorder='little')
+                    ts_usec = int(frac * 1000 * 1000).to_bytes(4, byteorder='little')
                     incl_len = len(logMsg)
                     orig_len = incl_len
 

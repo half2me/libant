@@ -11,12 +11,12 @@ def callback(msg):
 
 
 def eCallback(e):
-    print(e)
+    raise(e)
 
 
-with Node(USBDriver(vid=0x0FCF, pid=0x1008), 'MyNode') as n:
+with Node(USBDriver(vid=0x0FCF, pid=0x1008, debug=True), 'MyNode') as n:
     f = Factory(callback)
 
     n.enableRxScanMode()
     n.start(f.parseMessage, eCallback)
-    sleep(60)  # Listen for 1min
+    sleep(10)  # Listen for 1min
