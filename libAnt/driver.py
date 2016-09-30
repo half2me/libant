@@ -337,24 +337,27 @@ class DummyDriver(Driver):
 
 class PcapDriver(Driver):
     def __init__(self):
-        super().__init__(debug=True)
+        super().__init__(debug=False)
         self._isopen = False
-
-        with open(self.logfile, 'rb') as log:
-            data = log.read()
-
-        print(data)
 
     def _isOpen(self) -> bool:
         return self._isopen
 
     def _close(self) -> None:
         self._isopen = False
-        if self.logfile:
-            self.logfile.close()
 
     def _read(self, count: int, timeout=None) -> bytes:
-        return bytes(1)
+        data = bytearray()
+        print(count)
+        with open(self.logfile, 'rb') as log:
+            byte = log.read(1)
+            while byte:
+                data.extend(byte)
+                print(byte)
+                byte = log.read(1)
+
+        print(data)
+        return bytes(data)
 
     def _open(self) -> None:
         self._isopen = True
