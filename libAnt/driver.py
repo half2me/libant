@@ -81,6 +81,7 @@ class Driver:
 
         with self._lock:
             while True:
+                # TODO: fix index out of range error
                 sync = self._read(1, timeout=timeout)[0]
                 if sync is not MESSAGE_TX_SYNC:
                     continue
@@ -343,29 +344,40 @@ class PcapDriver(Driver):
     def __init__(self, logfile):
         super().__init__(debug=False)
         self._isopen = False
-        logfile = logfile
+        self.logfile = logfile
 
     def _isOpen(self) -> bool:
         return self._isopen
 
-    def _close(self) -> None:
-        self._isopen = False
-
-    def _read(self, count: int, timeout=None) -> bytes:
-        data = bytearray()
-        print(count)
-        with open(self.logfile, 'rb') as log:
-            byte = log.read(1)
-            while byte:
-                data.extend(byte)
-                print(byte)
-                byte = log.read(1)
-
-        print(data)
-        return bytes(data)
-
     def _open(self) -> None:
         self._isopen = True
+        self.log = open(self.logfile, 'rb')
+
+    def _close(self) -> None:
+        self._isopen = False
+        self.log.close()
+
+    def _read(self, count: int, timeout=None) -> bytes:
+        buffer = bytearray()
+        sync = self.log.read(1)
+        while sync != b'':
+            sync = self.log.read(1)[0]
+            if sync is not MESSAGE_TX_SYNC:
+                continue
+            length = self.log.read(1)[0]
+            type = self.log.read(1)[0]
+            data = self.log.read(8)
+            chk = self.log.read(1)[0]
+
+            packet = bytearray([sync, length, type])
+            packet.extend(data)
+            packet.append(chk)
+            print(packet)
+            buffer.extend(packet)
+            print(buffer)
+
+        return bytes(buffer)
+
 
     def _write(self, data: bytes) -> None:
         pass
