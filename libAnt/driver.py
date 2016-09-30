@@ -340,9 +340,10 @@ class DummyDriver(Driver):
         pass
 
 class PcapDriver(Driver):
-    def __init__(self):
+    def __init__(self, logfile):
         super().__init__(debug=False)
         self._isopen = False
+        logfile = logfile
 
     def _isOpen(self) -> bool:
         return self._isopen
