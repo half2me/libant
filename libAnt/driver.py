@@ -81,15 +81,6 @@ class Driver:
 
         with self._lock:
             while True:
-                # TODO: fix index out of range error
-                # sync = self._read(1, timeout=timeout)
-                # print(sync)
-                # if sync == b'':
-                #     print("EOF")
-                #     continue
-                # else:
-                #     sync = sync[0]
-
                 sync = self._read(1, timeout=timeout)[0]
                 if sync is not MESSAGE_TX_SYNC:
                     continue
@@ -322,10 +313,10 @@ class DummyDriver(Driver):
     def __init__(self):
         self._isopen = False
         self._data = Queue()
-        msg1 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\x10\x20\x30\x40\x50\x60\x70').encode()
+        msg1 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\x01\x02\x03\x04\x05\x06\x07').encode()
         for b in msg1:
             self._data.put(b)
-        msg2 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\x01\x02\x03\x04\x05\x06\x07').encode()
+        msg2 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\xF9\xFA\xFB\xFC\xFD\xFE\xFF').encode()
         for b in msg2:
             self._data.put(b)
         super().__init__(debug=True)
@@ -361,40 +352,43 @@ class PcapDriver(Driver):
     def _open(self) -> None:
         self._isopen = True
         self.log = open(self.logfile, 'rb')
+        # move file pointer to first packet header
+        global_header_length = 24
+        self.log.seek(global_header_length, 0)
+
 
     def _close(self) -> None:
         self._isopen = False
         self.log.close()
 
     def _read(self, count: int, timeout=None) -> bytes:
-        while True:
-            sync = self.log.read(1)
-            if sync == b'':
+        def read_next_packet_into_buffer():
+            # move file pointer to read length from packet header
+            self.log.seek(8, 1)
+            packet_length = self.log.read(1)
+            if packet_length == b'':
                 print("EOF")
-                break
-            else:
-                sync = sync[0]
-            if sync is not MESSAGE_TX_SYNC:
-                continue
-            length = self.log.read(1)[0]
-            type = self.log.read(1)[0]
-            data = self.log.read(length)
-            chk = self.log.read(1)[0]
+                # TODO: handle this
+                return
+            print("packet length: ", packet_length[0])
+            # move file pointer to beginning of packet
+            self.log.seek(7, 1)
+            for i in range(0, packet_length[0]):
+                self.buffer.put(self.log.read(1))
 
-            packet = bytearray([sync, length, type])
-            packet.extend(data)
-            packet.append(chk)
-            print("packet: ", packet)
-            self.buffer.put(packet)
+        result = bytearray()
 
-        items = bytearray()
-        # while not self.buffer.empty():
-        #     # print("reading from self.buffer")
-        #     # items.append(self.buffer.get()[0])
-        #     # print("items: ", items)
+        # count = 4
 
-        return bytes(items)
+        print("Reading ", count, " byte(s)...")
+        while len(result) < count:
+            if self.buffer.empty():
+                print("reading next packet into buffer...")
+                read_next_packet_into_buffer()
+            result.extend(self.buffer.get())
 
+        print("result: ", bytes(result))
+        return bytes(result)
 
     def _write(self, data: bytes) -> None:
         pass
