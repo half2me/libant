@@ -8,6 +8,7 @@ from serial import Serial, SerialException, SerialTimeoutException
 import usb
 import time
 from struct import *
+import os
 
 from libAnt.constants import MESSAGE_TX_SYNC, MESSAGE_CHANNEL_BROADCAST_DATA
 from libAnt.message import Message, SystemResetMessage
@@ -94,6 +95,7 @@ class Driver:
                     logMsg.append(chk)
                     timestamp = time.time() - self._openTime
                     frac, whole = math.modf(timestamp)
+                    print(timestamp)
 
                     ts_sec = int(whole).to_bytes(4, byteorder='little')
                     ts_usec = int(frac * 1000 * 1000).to_bytes(4, byteorder='little')
@@ -315,8 +317,11 @@ class DummyDriver(Driver):
         msg1 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\x01\x02\x03\x04\x05\x06\x07').encode()
         for b in msg1:
             self._data.put(b)
-        msg2 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\xF9\xFA\xFB\xFC\xFD\xFE\xFF').encode()
+        msg2 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\xF1\xF2\xF3\xF4\xF5\xF6\xF7').encode()
         for b in msg2:
+            self._data.put(b)
+        msg3 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\xF9\xFA\xFB\xFC\xFD\xFE\xFF').encode()
+        for b in msg3:
             self._data.put(b)
         super().__init__(debug=True)
 
@@ -350,33 +355,36 @@ class PcapDriver(Driver):
 
     def _open(self) -> None:
         self._isopen = True
-        self.log = open(self._logfile, 'rb')
+        self._log = open(self._logfile, 'rb')
+        self._EOF = os.stat(self._logfile).st_size
         # move file pointer to first packet header
         global_header_length = 24
-        self.log.seek(global_header_length, 0)
+        self._log.seek(global_header_length, 0)
 
 
     def _close(self) -> None:
         self._isopen = False
-        self.log.close()
+        self._log.close()
 
     def _read(self, count: int, timeout=None) -> bytes:
         def read_next_packet_into_buffer():
-            # move file pointer to read length from packet header
-            self.log.seek(8, 1)
-            packet_length = self.log.read(1)
-            if packet_length == b'':
+            if self._log.tell() is self._EOF:
                 print("EOF")
                 return
-            print("packet length: ", packet_length[0])
-            # move file pointer to beginning of packet
-            self.log.seek(7, 1)
-            for i in range(0, packet_length[0]):
-                self._buffer.put(self.log.read(1))
+
+            ts_sec, = unpack('i', self._log.read(4))
+            ts_usec = unpack('i', self._log.read(4))[0]/1000000
+            ts = ts_sec + ts_usec
+            print("ts: ", ts)
+            time.sleep(ts)
+
+            packet_length = unpack('i', self._log.read(4))[0]
+            print("packet length: ", packet_length)
+            self._log.seek(4, 1)
+            for i in range(0, packet_length):
+                self._buffer.put(self._log.read(1))
 
         result = bytearray()
-
-        # count = 4
 
         print("Reading ", count, " byte(s)...")
         while len(result) < count:
