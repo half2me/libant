@@ -7,7 +7,6 @@ from serial import Serial, SerialException, SerialTimeoutException
 
 import usb
 import time
-import binascii
 from struct import *
 
 from libAnt.constants import MESSAGE_TX_SYNC, MESSAGE_CHANNEL_BROADCAST_DATA
@@ -343,15 +342,15 @@ class PcapDriver(Driver):
     def __init__(self, logfile):
         super().__init__(debug=False)
         self._isopen = False
-        self.logfile = logfile
-        self.buffer = Queue()
+        self._logfile = logfile
+        self._buffer = Queue()
 
     def _isOpen(self) -> bool:
         return self._isopen
 
     def _open(self) -> None:
         self._isopen = True
-        self.log = open(self.logfile, 'rb')
+        self.log = open(self._logfile, 'rb')
         # move file pointer to first packet header
         global_header_length = 24
         self.log.seek(global_header_length, 0)
@@ -368,13 +367,12 @@ class PcapDriver(Driver):
             packet_length = self.log.read(1)
             if packet_length == b'':
                 print("EOF")
-                # TODO: handle this
                 return
             print("packet length: ", packet_length[0])
             # move file pointer to beginning of packet
             self.log.seek(7, 1)
             for i in range(0, packet_length[0]):
-                self.buffer.put(self.log.read(1))
+                self._buffer.put(self.log.read(1))
 
         result = bytearray()
 
@@ -382,10 +380,13 @@ class PcapDriver(Driver):
 
         print("Reading ", count, " byte(s)...")
         while len(result) < count:
-            if self.buffer.empty():
+            if self._buffer.empty():
                 print("reading next packet into buffer...")
                 read_next_packet_into_buffer()
-            result.extend(self.buffer.get())
+            try:
+                result.extend(self._buffer.get(block=True, timeout = timeout))
+            except Empty:
+                print("Timed out..")
 
         print("result: ", bytes(result))
         return bytes(result)
