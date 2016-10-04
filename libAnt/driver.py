@@ -355,7 +355,7 @@ class PcapDriver(Driver):
 
     def _open(self) -> None:
         self._isopen = True
-        self._loop = PcapLoop(self._pcap, self._buffer)
+        self._loop = PcapLoop(self._openTime, self._pcap, self._buffer)
         self._loop.start()
 
     def _close(self) -> None:
@@ -383,9 +383,10 @@ class PcapDriver(Driver):
         pass
 
 class PcapLoop(Thread):
-    def __init__(self, pcap, buffer: Queue):
+    def __init__(self, openTime, pcap, buffer: Queue):
         super().__init__()
         self._stopper = Event()
+        self._openTime = openTime
         self._pcap = pcap
         self._buffer = buffer
 
@@ -399,16 +400,20 @@ class PcapLoop(Thread):
         global_header_length = 24
         self._pcapfile.seek(global_header_length, 0)
 
+        ts = 0
+
         while not self._stopper.is_set():
             if self._pcapfile.tell() is self._EOF:
-                print("EOF")
-                return
+                continue
 
+            prev_ts = ts
             ts_sec, = unpack('i', self._pcapfile.read(4))
             ts_usec = unpack('i', self._pcapfile.read(4))[0] / 1000000
-            # ts = ts_sec + ts_usec
-            # print("ts: ", ts)
-            # time.sleep(ts)
+            ts = ts_sec + ts_usec
+            # TODO: openTime
+            delay = ts-prev_ts
+            print(delay)
+            time.sleep(delay)
 
             packet_length = unpack('i', self._pcapfile.read(4))[0]
             print("packet length: ", packet_length)
