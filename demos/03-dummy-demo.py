@@ -13,7 +13,7 @@ def eCallback(e):
     raise e
 
 
-with Node(DummyDriver(), 'MyNode') as n:
+with Node(DummyDriver('log.pcap'), 'MyNode') as n:
     n.enableRxScanMode()
     n.start(callback, eCallback)
     sleep(1)  # Listen for 30sec

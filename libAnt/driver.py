@@ -23,10 +23,9 @@ class Driver:
     The driver provides an interface to read and write raw data to and from an ANT+ capable hardware device
     """
 
-    def __init__(self, debug=False):
+    def __init__(self, log = None):
         self._lock = Lock()
-        self._debug = debug
-        self.logfile = 'log.pcap'
+        self._log = log
         self._openTime = None
 
     def __enter__(self):
@@ -45,9 +44,9 @@ class Driver:
             if not self._isOpen():
                 self._open()
                 self._openTime = time.time()
-                if self._debug:
+                if self._log:
                     # write pcap global header
-                    magic_number = b'\xD4\xC3\xB2\xA1'
+                    magic_number = b'\xD4\xC3\xB2\xA1' # hex
                     version_major = 2
                     version_minor = 4
                     thiszone = b'\x00\x00\x00\x00'
@@ -57,7 +56,7 @@ class Driver:
 
                     pcap_global_header = Struct('<4shh4s4s4s4s')
 
-                    with open(self.logfile, 'wb') as log:
+                    with open(self._log, 'wb') as log:
                         log.write(pcap_global_header.pack(magic_number, version_major, version_minor, thiszone, sigfigs, snaplen, network))
 
     def close(self) -> None:
@@ -89,22 +88,21 @@ class Driver:
                 data = self._read(length, timeout=timeout)
                 chk = self._read(1, timeout=timeout)[0]
                 msg = Message(type, data)
-                if self._debug:
+                if self._log:
                     logMsg = bytearray([sync, length, type])
                     logMsg.extend(data)
                     logMsg.append(chk)
                     timestamp = time.time() - self._openTime
                     frac, whole = math.modf(timestamp)
-                    print(timestamp)
 
-                    ts_sec = int(whole).to_bytes(4, byteorder='little')
+                    ts_sec = int(whole).to_bytes(4, byteorder='little') # kell ez?
                     ts_usec = int(frac * 1000 * 1000).to_bytes(4, byteorder='little')
                     incl_len = len(logMsg)
                     orig_len = incl_len
 
                     pcap_packet_header = Struct('<4s4sll')
 
-                    with open(self.logfile, 'ab') as log:
+                    with open(self._log, 'ab') as log:
                         log.write(pcap_packet_header.pack(ts_sec, ts_usec, incl_len, orig_len))
                         log.write(logMsg)
 
@@ -144,8 +142,8 @@ class SerialDriver(Driver):
     An implementation of a serial ANT+ device driver
     """
 
-    def __init__(self, device: str, baudRate: int = 115200, debug=False):
-        super().__init__(debug=debug)
+    def __init__(self, device: str, baudRate: int = 115200, log = None):
+        super().__init__(log = log)
         self._device = device
         self._baudRate = baudRate
         self._serial = None
@@ -187,8 +185,8 @@ class USBDriver(Driver):
     An implementation of a USB ANT+ device driver
     """
 
-    def __init__(self, vid, pid, debug=False):
-        super().__init__(debug=debug)
+    def __init__(self, vid, pid, log = None):
+        super().__init__(log = None)
         self._idVendor = vid
         self._idProduct = pid
         self._dev = None
@@ -311,7 +309,8 @@ class USBLoop(Thread):
         self._queue.put(None)
 
 class DummyDriver(Driver):
-    def __init__(self):
+    def __init__(self, log = None):
+        super().__init__(log = log)
         self._isopen = False
         self._data = Queue()
         msg1 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\x01\x02\x03\x04\x05\x06\x07').encode()
@@ -323,7 +322,6 @@ class DummyDriver(Driver):
         msg3 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\xF9\xFA\xFB\xFC\xFD\xFE\xFF').encode()
         for b in msg3:
             self._data.put(b)
-        super().__init__(debug=True)
 
     def _isOpen(self) -> bool:
         return self._isopen
@@ -344,10 +342,10 @@ class DummyDriver(Driver):
         pass
 
 class PcapDriver(Driver):
-    def __init__(self, logfile):
-        super().__init__(debug=False)
+    def __init__(self, log):
+        super().__init__()
         self._isopen = False
-        self._logfile = logfile
+        self._logfile = log
         self._buffer = Queue()
 
     def _isOpen(self) -> bool:
@@ -355,34 +353,34 @@ class PcapDriver(Driver):
 
     def _open(self) -> None:
         self._isopen = True
-        self._log = open(self._logfile, 'rb')
+        self._logf = open(self._logfile, 'rb')
         self._EOF = os.stat(self._logfile).st_size
         # move file pointer to first packet header
         global_header_length = 24
-        self._log.seek(global_header_length, 0)
+        self._logf.seek(global_header_length, 0)
 
 
     def _close(self) -> None:
         self._isopen = False
-        self._log.close()
+        self._logf.close()
 
     def _read(self, count: int, timeout=None) -> bytes:
         def read_next_packet_into_buffer():
-            if self._log.tell() is self._EOF:
+            if self._logf.tell() is self._EOF:
                 print("EOF")
                 return
 
-            ts_sec, = unpack('i', self._log.read(4))
-            ts_usec = unpack('i', self._log.read(4))[0]/1000000
+            ts_sec, = unpack('i', self._logf.read(4))
+            ts_usec = unpack('i', self._logf.read(4))[0]/1000000
             ts = ts_sec + ts_usec
             print("ts: ", ts)
-            time.sleep(ts)
+            time.sleep(ts)  #  most - megnyitási ...
 
-            packet_length = unpack('i', self._log.read(4))[0]
+            packet_length = unpack('i', self._logf.read(4))[0]
             print("packet length: ", packet_length)
-            self._log.seek(4, 1)
+            self._logf.seek(4, 1)
             for i in range(0, packet_length):
-                self._buffer.put(self._log.read(1))
+                self._buffer.put(self._logf.read(1))
 
         result = bytearray()
 
