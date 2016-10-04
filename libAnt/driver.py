@@ -348,47 +348,29 @@ class PcapDriver(Driver):
         self._pcap = pcap
         self._buffer = Queue()
 
+        self._loop = None
+
     def _isOpen(self) -> bool:
         return self._isopen
 
     def _open(self) -> None:
         self._isopen = True
-        self._pcapfile = open(self._pcap, 'rb')
-        self._EOF = os.stat(self._pcap).st_size
-        # move file pointer to first packet header
-        global_header_length = 24
-        self._pcapfile.seek(global_header_length, 0)
-
+        self._loop = PcapLoop(self._pcap, self._buffer)
+        self._loop.start()
 
     def _close(self) -> None:
         self._isopen = False
-        self._pcapfile.close()
+        if self._loop is not None:
+            if self._loop.is_alive():
+                self._loop.stop()
+                self._loop.join()
+        self._loop = None
 
     def _read(self, count: int, timeout=None) -> bytes:
-        def read_next_packet_into_buffer():
-            if self._pcapfile.tell() is self._EOF:
-                print("EOF")
-                return
-
-            ts_sec, = unpack('i', self._pcapfile.read(4))
-            ts_usec = unpack('i', self._pcapfile.read(4))[0]/1000000
-            ts = ts_sec + ts_usec
-            print("ts: ", ts)
-            time.sleep(ts)
-
-            packet_length = unpack('i', self._pcapfile.read(4))[0]
-            print("packet length: ", packet_length)
-            self._pcapfile.seek(4, 1)
-            for i in range(0, packet_length):
-                self._buffer.put(self._pcapfile.read(1))
-
         result = bytearray()
 
         print("Reading ", count, " byte(s)...")
         while len(result) < count:
-            if self._buffer.empty():
-                print("reading next packet into buffer...")
-                read_next_packet_into_buffer()
             try:
                 result.extend(self._buffer.get(block=True, timeout = timeout))
             except Empty:
@@ -399,3 +381,39 @@ class PcapDriver(Driver):
 
     def _write(self, data: bytes) -> None:
         pass
+
+class PcapLoop(Thread):
+    def __init__(self, pcap, buffer: Queue):
+        super().__init__()
+        self._stopper = Event()
+        self._pcap = pcap
+        self._buffer = buffer
+
+    def stop(self) -> None:
+        self._stopper.set()
+
+    def run(self) -> None:
+        self._pcapfile = open(self._pcap, 'rb')
+        self._EOF = os.stat(self._pcap).st_size
+        # move file pointer to first packet header
+        global_header_length = 24
+        self._pcapfile.seek(global_header_length, 0)
+
+        while not self._stopper.is_set():
+            if self._pcapfile.tell() is self._EOF:
+                print("EOF")
+                return
+
+            ts_sec, = unpack('i', self._pcapfile.read(4))
+            ts_usec = unpack('i', self._pcapfile.read(4))[0] / 1000000
+            # ts = ts_sec + ts_usec
+            # print("ts: ", ts)
+            # time.sleep(ts)
+
+            packet_length = unpack('i', self._pcapfile.read(4))[0]
+            print("packet length: ", packet_length)
+            self._pcapfile.seek(4, 1)
+            for i in range(packet_length):
+                self._buffer.put(self._pcapfile.read(1))
+
+        self._pcapfile.close()
