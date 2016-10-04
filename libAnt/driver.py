@@ -46,7 +46,7 @@ class Driver:
                 self._openTime = time.time()
                 if self._log:
                     # write pcap global header
-                    magic_number = b'\xD4\xC3\xB2\xA1' # hex
+                    magic_number = b'\xD4\xC3\xB2\xA1'
                     version_major = 2
                     version_minor = 4
                     thiszone = b'\x00\x00\x00\x00'
@@ -95,7 +95,7 @@ class Driver:
                     timestamp = time.time() - self._openTime
                     frac, whole = math.modf(timestamp)
 
-                    ts_sec = int(whole).to_bytes(4, byteorder='little') # kell ez?
+                    ts_sec = int(whole).to_bytes(4, byteorder='little')
                     ts_usec = int(frac * 1000 * 1000).to_bytes(4, byteorder='little')
                     incl_len = len(logMsg)
                     orig_len = incl_len
@@ -342,10 +342,10 @@ class DummyDriver(Driver):
         pass
 
 class PcapDriver(Driver):
-    def __init__(self, log):
-        super().__init__()
+    def __init__(self, pcap, log = None):
+        super().__init__(log = log)
         self._isopen = False
-        self._logfile = log
+        self._pcap = pcap
         self._buffer = Queue()
 
     def _isOpen(self) -> bool:
@@ -353,34 +353,34 @@ class PcapDriver(Driver):
 
     def _open(self) -> None:
         self._isopen = True
-        self._logf = open(self._logfile, 'rb')
-        self._EOF = os.stat(self._logfile).st_size
+        self._pcapfile = open(self._pcap, 'rb')
+        self._EOF = os.stat(self._pcap).st_size
         # move file pointer to first packet header
         global_header_length = 24
-        self._logf.seek(global_header_length, 0)
+        self._pcapfile.seek(global_header_length, 0)
 
 
     def _close(self) -> None:
         self._isopen = False
-        self._logf.close()
+        self._pcapfile.close()
 
     def _read(self, count: int, timeout=None) -> bytes:
         def read_next_packet_into_buffer():
-            if self._logf.tell() is self._EOF:
+            if self._pcapfile.tell() is self._EOF:
                 print("EOF")
                 return
 
-            ts_sec, = unpack('i', self._logf.read(4))
-            ts_usec = unpack('i', self._logf.read(4))[0]/1000000
+            ts_sec, = unpack('i', self._pcapfile.read(4))
+            ts_usec = unpack('i', self._pcapfile.read(4))[0]/1000000
             ts = ts_sec + ts_usec
             print("ts: ", ts)
-            time.sleep(ts)  #  most - megnyitási ...
+            time.sleep(ts)
 
-            packet_length = unpack('i', self._logf.read(4))[0]
+            packet_length = unpack('i', self._pcapfile.read(4))[0]
             print("packet length: ", packet_length)
-            self._logf.seek(4, 1)
+            self._pcapfile.seek(4, 1)
             for i in range(0, packet_length):
-                self._buffer.put(self._logf.read(1))
+                self._buffer.put(self._pcapfile.read(1))
 
         result = bytearray()
 
