@@ -23,9 +23,9 @@ class Driver:
     The driver provides an interface to read and write raw data to and from an ANT+ capable hardware device
     """
 
-    def __init__(self, logFile: str = None):
+    def __init__(self, logger: Logger = None):
         self._lock = Lock()
-        self._logger = PcapLogger(logFile) if str is not None else None
+        self._logger = logger
         self._openTime = None
 
     def __enter__(self):
@@ -133,8 +133,8 @@ class SerialDriver(Driver):
     An implementation of a serial ANT+ device driver
     """
 
-    def __init__(self, device: str, baudRate: int = 115200, logFile=None):
-        super().__init__(logFile=logFile)
+    def __init__(self, device: str, baudRate: int = 115200, logger: Logger = None):
+        super().__init__(logger=logger)
         self._device = device
         self._baudRate = baudRate
         self._serial = None
@@ -176,8 +176,8 @@ class USBDriver(Driver):
     An implementation of a USB ANT+ device driver
     """
 
-    def __init__(self, vid, pid, logFile=None):
-        super().__init__(logFile=logFile)
+    def __init__(self, vid, pid, logger: Logger = None):
+        super().__init__(logger=logger)
         self._idVendor = vid
         self._idProduct = pid
         self._dev = None
@@ -300,8 +300,8 @@ class USBDriver(Driver):
 
 
 class DummyDriver(Driver):
-    def __init__(self, logFile=None):
-        super().__init__(logFile=logFile)
+    def __init__(self, logger: Logger = None):
+        super().__init__(logger=logger)
         self._isopen = False
         self._data = Queue()
         msg1 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\x01\x02\x03\x04\x05\x06\x07').encode()
@@ -334,8 +334,8 @@ class DummyDriver(Driver):
 
 
 class PcapDriver(Driver):
-    def __init__(self, pcap, logFile=None):
-        super().__init__(logFile=logFile)
+    def __init__(self, pcap, logger: Logger = None):
+        super().__init__(logger=logger)
         self._isopen = False
         self._pcap = pcap
         self._buffer = Queue()
@@ -406,7 +406,7 @@ class PcapDriver(Driver):
         pass
 
 
-class logger:
+class Logger:
     def __init__(self, logFile: str):
         self._logFile = logFile
         self._log = None
@@ -446,7 +446,7 @@ class logger:
         return data
 
 
-class PcapLogger(logger):
+class PcapLogger(Logger):
     def onOpen(self):
         # write pcap global header
         magic_number = b'\xD4\xC3\xB2\xA1'
