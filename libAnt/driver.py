@@ -29,8 +29,28 @@ class Logger:
         self.close()
 
     def open(self):
+        def validate(logFile: str) -> str:
+            print("got", logFile)
+            if '.' in logFile:
+                name, ext = logFile.split('.', 2)
+                ext = '.' + ext
+            else:
+                name = logFile
+                ext = ''
+            num = 0
+            exists = True
+            while(exists):
+                logFile = name + '-' + str(num) + ext
+                try:
+                    with open(logFile):
+                except IOError:
+                    return logFile
+                num += 1
+
         if self._log is not None:
             self.close()
+        self._logFile = validate(self._logFile)
+        print(self._logFile)
         self._log = open(self._logFile, 'wb')
         self.onOpen()
 
