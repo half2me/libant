@@ -416,7 +416,7 @@ class PcapDriver(Driver):
             while not self._stopper.is_set():
                 try:
                     ts_sec, = unpack('i', self._pcapfile.read(4))
-                except:
+                except error:
                     break
                 ts_usec = unpack('i', self._pcapfile.read(4))[0] / 1000000
 
