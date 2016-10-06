@@ -78,6 +78,7 @@ class Driver:
                 data = self._read(length, timeout=timeout)
                 chk = self._read(1, timeout=timeout)[0]
                 msg = Message(type, data)
+
                 if self._log:
                     logMsg = bytearray([sync, length, type])
                     logMsg.extend(data)
@@ -193,6 +194,29 @@ class USBDriver(Driver):
             return str(self._dev)
         return "Closed"
 
+    class USBLoop(Thread):
+        def __init__(self, ep, packetSize: int, queue: Queue):
+            super().__init__()
+            self._stopper = Event()
+            self._ep = ep
+            self._packetSize = packetSize
+            self._queue = queue
+
+        def stop(self) -> None:
+            self._stopper.set()
+
+        def run(self) -> None:
+            while not self._stopper.is_set():
+                try:
+                    data = self._ep.read(self._packetSize, timeout=1000)
+                    for d in data:
+                        self._queue.put(d)
+                except usb.core.USBError as e:
+                    if e.errno not in (60, 110) and e.backend_error_code != -116:  # Timout errors
+                        self._stopper.set()
+            # We Put in an invalid byte so threads will realize the device is stopped
+            self._queue.put(None)
+
     def _isOpen(self) -> bool:
         return self._driver_open
 
@@ -237,7 +261,7 @@ class USBDriver(Driver):
                 raise DriverException("Could not initialize USB endpoint")
 
             self._queue = Queue()
-            self._loop = USBLoop(self._epIn, self._packetSize, self._queue)
+            self._loop = self.USBLoop(self._epIn, self._packetSize, self._queue)
             self._loop.start()
             self._driver_open = True
             print('USB OPEN SUCCESS')
@@ -273,30 +297,6 @@ class USBDriver(Driver):
 
     def _write(self, data: bytes) -> None:
         return self._epOut.write(data)
-
-
-class USBLoop(Thread):
-    def __init__(self, ep, packetSize: int, queue: Queue):
-        super().__init__()
-        self._stopper = Event()
-        self._ep = ep
-        self._packetSize = packetSize
-        self._queue = queue
-
-    def stop(self) -> None:
-        self._stopper.set()
-
-    def run(self) -> None:
-        while not self._stopper.is_set():
-            try:
-                data = self._ep.read(self._packetSize, timeout=1000)
-                for d in data:
-                    self._queue.put(d)
-            except usb.core.USBError as e:
-                if e.errno not in (60, 110) and e.backend_error_code != -116:  # Timout errors
-                    self._stopper.set()
-        # We Put in an invalid byte so threads will realize the device is stopped
-        self._queue.put(None)
 
 
 class DummyDriver(Driver):
@@ -342,12 +342,48 @@ class PcapDriver(Driver):
 
         self._loop = None
 
+    class PcapLoop(Thread):
+        def __init__(self, openTime, pcap, buffer: Queue):
+            super().__init__()
+            self._stopper = Event()
+            self._openTime = openTime
+            self._pcap = pcap
+            self._buffer = buffer
+
+        def stop(self) -> None:
+            self._stopper.set()
+
+        def run(self) -> None:
+            self._pcapfile = open(self._pcap, 'rb')
+            self._EOF = os.stat(self._pcap).st_size
+            # move file pointer to first packet header
+            global_header_length = 24
+            self._pcapfile.seek(global_header_length, 0)
+
+            while not self._stopper.is_set():
+                if self._pcapfile.tell() is self._EOF:
+                    continue
+
+                ts_sec, = unpack('i', self._pcapfile.read(4))
+                ts_usec = unpack('i', self._pcapfile.read(4))[0] / 1000000
+                ts = ts_sec + ts_usec
+                uptime = time.time() - self._openTime
+                if ts > uptime:
+                    time.sleep(ts - uptime)
+
+                packet_length = unpack('i', self._pcapfile.read(4))[0]
+                self._pcapfile.seek(4, 1)
+                for i in range(packet_length):
+                    self._buffer.put(self._pcapfile.read(1))
+
+            self._pcapfile.close()
+
     def _isOpen(self) -> bool:
         return self._isopen
 
     def _open(self) -> None:
         self._isopen = True
-        self._loop = PcapLoop(time.time(), self._pcap, self._buffer)
+        self._loop = self.PcapLoop(time.time(), self._pcap, self._buffer)
         self._loop.start()
 
     def _close(self) -> None:
@@ -368,43 +404,6 @@ class PcapDriver(Driver):
 
     def _write(self, data: bytes) -> None:
         pass
-
-
-class PcapLoop(Thread):
-    def __init__(self, openTime, pcap, buffer: Queue):
-        super().__init__()
-        self._stopper = Event()
-        self._openTime = openTime
-        self._pcap = pcap
-        self._buffer = buffer
-
-    def stop(self) -> None:
-        self._stopper.set()
-
-    def run(self) -> None:
-        self._pcapfile = open(self._pcap, 'rb')
-        self._EOF = os.stat(self._pcap).st_size
-        # move file pointer to first packet header
-        global_header_length = 24
-        self._pcapfile.seek(global_header_length, 0)
-
-        while not self._stopper.is_set():
-            if self._pcapfile.tell() is self._EOF:
-                continue
-
-            ts_sec, = unpack('i', self._pcapfile.read(4))
-            ts_usec = unpack('i', self._pcapfile.read(4))[0] / 1000000
-            ts = ts_sec + ts_usec
-            uptime = time.time() - self._openTime
-            if ts > uptime:
-                time.sleep(ts-uptime)
-
-            packet_length = unpack('i', self._pcapfile.read(4))[0]
-            self._pcapfile.seek(4, 1)
-            for i in range(packet_length):
-                self._buffer.put(self._pcapfile.read(1))
-
-        self._pcapfile.close()
 
 
 class logger:
