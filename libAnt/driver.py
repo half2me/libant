@@ -361,14 +361,9 @@ class PcapDriver(Driver):
     def _read(self, count: int, timeout=None) -> bytes:
         result = bytearray()
 
-        print("Reading ", count, " byte(s)...")
         while len(result) < count:
-            try:
-                result.extend(self._buffer.get(block=True, timeout=timeout))
-            except Empty:
-                print("Timed out..")
+            result.extend(self._buffer.get(block=True, timeout=timeout))
 
-        print("result: ", bytes(result))
         return bytes(result)
 
     def _write(self, data: bytes) -> None:
@@ -393,29 +388,19 @@ class PcapLoop(Thread):
         global_header_length = 24
         self._pcapfile.seek(global_header_length, 0)
 
-        # ts = 0
-
         while not self._stopper.is_set():
             if self._pcapfile.tell() is self._EOF:
                 continue
 
-            # prev_ts = ts
             ts_sec, = unpack('i', self._pcapfile.read(4))
             ts_usec = unpack('i', self._pcapfile.read(4))[0] / 1000000
             ts = ts_sec + ts_usec
-            # TODO: openTime
-            # delay = ts-prev_ts
             uptime = time.time() - self._openTime
             if ts > uptime:
-                # print("sleeping", ts-uptime)
-                time.sleep(ts - uptime)
-                # else:
-                # print("late", uptime-ts)
+                time.sleep(ts-uptime)
 
             packet_length = unpack('i', self._pcapfile.read(4))[0]
-            print("packet length: ", packet_length)
             self._pcapfile.seek(4, 1)
-            # print(ts, time.time() - self._openTime)
             for i in range(packet_length):
                 self._buffer.put(self._pcapfile.read(1))
 
