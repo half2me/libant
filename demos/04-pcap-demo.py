@@ -16,4 +16,4 @@ def eCallback(e):
 with Node(PcapDriver('log.pcap', 'pcapdriverlog.pcap'), 'MyNode') as n:
     # n.enableRxScanMode()
     n.start(callback, eCallback)
-    sleep(1)  # Listen for 30sec
+    sleep(20)  # Listen for 30sec

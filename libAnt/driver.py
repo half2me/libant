@@ -23,9 +23,9 @@ class Driver:
     The driver provides an interface to read and write raw data to and from an ANT+ capable hardware device
     """
 
-    def __init__(self, log = None):
+    def __init__(self, logFile: str = None):
         self._lock = Lock()
-        self._log = log
+        self._logger = PcapLogger(logFile) if str is not None else None
         self._openTime = None
 
     def __enter__(self):
@@ -42,27 +42,17 @@ class Driver:
     def open(self) -> None:
         with self._lock:
             if not self._isOpen():
-                self._open()
                 self._openTime = time.time()
-                if self._log:
-                    # write pcap global header
-                    magic_number = b'\xD4\xC3\xB2\xA1'
-                    version_major = 2
-                    version_minor = 4
-                    thiszone = b'\x00\x00\x00\x00'
-                    sigfigs = b'\x00\x00\x00\x00'
-                    snaplen = b'\xFF\x00\x00\x00'
-                    network = b'\x01\x00\x00\x00'
-
-                    pcap_global_header = Struct('<4shh4s4s4s4s')
-
-                    with open(self._log, 'wb') as log:
-                        log.write(pcap_global_header.pack(magic_number, version_major, version_minor, thiszone, sigfigs, snaplen, network))
+                if self._logger is not None:
+                    self._logger.open()
+                self._open()
 
     def close(self) -> None:
         with self._lock:
             if self._isOpen:
                 self._close()
+                if self._logger is not None:
+                    self._logger.close()
 
     def reOpen(self) -> None:
         with self._lock:
@@ -142,8 +132,8 @@ class SerialDriver(Driver):
     An implementation of a serial ANT+ device driver
     """
 
-    def __init__(self, device: str, baudRate: int = 115200, log = None):
-        super().__init__(log = log)
+    def __init__(self, device: str, baudRate: int = 115200, logFile=None):
+        super().__init__(logFile=logFile)
         self._device = device
         self._baudRate = baudRate
         self._serial = None
@@ -185,8 +175,8 @@ class USBDriver(Driver):
     An implementation of a USB ANT+ device driver
     """
 
-    def __init__(self, vid, pid, log = None):
-        super().__init__(log = None)
+    def __init__(self, vid, pid, logFile=None):
+        super().__init__(logFile=logFile)
         self._idVendor = vid
         self._idProduct = pid
         self._dev = None
@@ -303,14 +293,15 @@ class USBLoop(Thread):
                 for d in data:
                     self._queue.put(d)
             except usb.core.USBError as e:
-                if e.errno not in (60, 110) and e.backend_error_code != -116: # Timout errors
+                if e.errno not in (60, 110) and e.backend_error_code != -116:  # Timout errors
                     self._stopper.set()
-        #  We Put in an invalid byte so threads will realize the device is stopped
+        # We Put in an invalid byte so threads will realize the device is stopped
         self._queue.put(None)
 
+
 class DummyDriver(Driver):
-    def __init__(self, log = None):
-        super().__init__(log = log)
+    def __init__(self, logFile=None):
+        super().__init__(logFile=logFile)
         self._isopen = False
         self._data = Queue()
         msg1 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\x01\x02\x03\x04\x05\x06\x07').encode()
@@ -341,9 +332,10 @@ class DummyDriver(Driver):
     def _write(self, data: bytes) -> None:
         pass
 
+
 class PcapDriver(Driver):
-    def __init__(self, pcap, log = None):
-        super().__init__(log = log)
+    def __init__(self, pcap, logFile=None):
+        super().__init__(logFile=logFile)
         self._isopen = False
         self._pcap = pcap
         self._buffer = Queue()
@@ -372,7 +364,7 @@ class PcapDriver(Driver):
         print("Reading ", count, " byte(s)...")
         while len(result) < count:
             try:
-                result.extend(self._buffer.get(block=True, timeout = timeout))
+                result.extend(self._buffer.get(block=True, timeout=timeout))
             except Empty:
                 print("Timed out..")
 
@@ -381,6 +373,7 @@ class PcapDriver(Driver):
 
     def _write(self, data: bytes) -> None:
         pass
+
 
 class PcapLoop(Thread):
     def __init__(self, openTime, pcap, buffer: Queue):
@@ -415,8 +408,8 @@ class PcapLoop(Thread):
             uptime = time.time() - self._openTime
             if ts > uptime:
                 # print("sleeping", ts-uptime)
-                time.sleep(ts-uptime)
-            # else:
+                time.sleep(ts - uptime)
+                # else:
                 # print("late", uptime-ts)
 
             packet_length = unpack('i', self._pcapfile.read(4))[0]
@@ -427,3 +420,62 @@ class PcapLoop(Thread):
                 self._buffer.put(self._pcapfile.read(1))
 
         self._pcapfile.close()
+
+
+class logger:
+    def __init__(self, logFile):
+        self._logFile = logFile
+        self._log = None
+
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def open(self):
+        if self._log is not None:
+            self.close()
+        self._log = open(self._logFile, 'wb')
+        self.onOpen()
+
+    def close(self):
+        if self._log is not None:
+            self.beforeClose()
+            self._log.close()
+            self.afterClose()
+
+    def log(self, data: bytes):
+        self._log.write(self.encodeData(data))
+
+    def onOpen(self):
+        pass
+
+    def beforeClose(self):
+        pass
+
+    def afterClose(self):
+        pass
+
+    def encodeData(self, data):
+        return data
+
+
+class PcapLogger(logger):
+    def onOpen(self):
+        # write pcap global header
+        magic_number = b'\xD4\xC3\xB2\xA1'
+        version_major = 2
+        version_minor = 4
+        thiszone = b'\x00\x00\x00\x00'
+        sigfigs = b'\x00\x00\x00\x00'
+        snaplen = b'\xFF\x00\x00\x00'
+        network = b'\x01\x00\x00\x00'
+        pcap_global_header = Struct('<4shh4s4s4s4s')
+        self._log.write(
+            pcap_global_header.pack(magic_number, version_major, version_minor, thiszone, sigfigs,
+                                    snaplen, network))
+
+    def encodeData(self, data):
+        return data  # pack data into pcap packets here

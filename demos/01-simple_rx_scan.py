@@ -13,7 +13,7 @@ def eCallback(e):
     print(e)
 
 
-with Node(USBDriver(vid=0x0FCF, pid=0x1008, debug=True), 'MyNode') as n:
+with Node(USBDriver(vid=0x0FCF, pid=0x1008), 'MyNode') as n:
     n.enableRxScanMode()
     n.start(callback, eCallback)
     sleep(30)  # Listen for 30sec

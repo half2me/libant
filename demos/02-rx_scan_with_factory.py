@@ -14,7 +14,7 @@ def eCallback(e):
     raise(e)
 
 
-with Node(USBDriver(vid=0x0FCF, pid=0x1008, debug=True), 'MyNode') as n:
+with Node(USBDriver(vid=0x0FCF, pid=0x1008, logFile='log.pcap'), 'MyNode') as n:
     f = Factory(callback)
 
     n.enableRxScanMode()
