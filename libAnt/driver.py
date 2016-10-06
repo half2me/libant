@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from queue import Queue, Empty
+from queue import Queue
 from threading import Lock, Thread, Event
 
 import math
