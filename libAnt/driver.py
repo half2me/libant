@@ -148,20 +148,8 @@ class Driver:
                     logMsg = bytearray([sync, length, type])
                     logMsg.extend(data)
                     logMsg.append(chk)
-                    # timestamp = time.time() - self._openTime
-                    # frac, whole = math.modf(timestamp)
-                    #
-                    # ts_sec = int(whole).to_bytes(4, byteorder='little')
-                    # ts_usec = int(frac * 1000 * 1000).to_bytes(4, byteorder='little')
-                    # incl_len = len(logMsg)
-                    # orig_len = incl_len
-
-                    # pcap_packet_header = Struct('<4s4sll')
 
                     self._logger.log(bytes(logMsg))
-                    # with open(self._log, 'ab') as log:
-                    #     log.write(pcap_packet_header.pack(ts_sec, ts_usec, incl_len, orig_len))
-                    #     log.write(logMsg)
 
                 if msg.checksum() == chk:
                     return msg
@@ -409,10 +397,9 @@ class PcapDriver(Driver):
         self._loop = None
 
     class PcapLoop(Thread):
-        def __init__(self, openTime, pcap, buffer: Queue):
+        def __init__(self, pcap, buffer: Queue):
             super().__init__()
             self._stopper = Event()
-            self._openTime = openTime
             self._pcap = pcap
             self._buffer = buffer
 
@@ -426,16 +413,24 @@ class PcapDriver(Driver):
             global_header_length = 24
             self._pcapfile.seek(global_header_length, 0)
 
+            first_ts = 0
+            start_time = time.time()
             while not self._stopper.is_set():
                 if self._pcapfile.tell() is self._EOF:
                     continue
 
                 ts_sec, = unpack('i', self._pcapfile.read(4))
                 ts_usec = unpack('i', self._pcapfile.read(4))[0] / 1000000
+
+                if first_ts is 0:
+                    first_ts = ts_sec + ts_usec
+
                 ts = ts_sec + ts_usec
-                uptime = time.time() - self._openTime
-                if ts > uptime:
-                    time.sleep(ts - uptime)
+                send_time = ts - first_ts
+                elapsed_time = time.time() - start_time
+                if send_time > (elapsed_time):
+                    sleep_time = send_time - elapsed_time
+                    time.sleep(sleep_time)
 
                 packet_length = unpack('i', self._pcapfile.read(4))[0]
                 self._pcapfile.seek(4, 1)
@@ -449,7 +444,7 @@ class PcapDriver(Driver):
 
     def _open(self) -> None:
         self._isopen = True
-        self._loop = self.PcapLoop(time.time(), self._pcap, self._buffer)
+        self._loop = self.PcapLoop(self._pcap, self._buffer)
         self._loop.start()
 
     def _close(self) -> None:
@@ -464,7 +459,7 @@ class PcapDriver(Driver):
         result = bytearray()
 
         while len(result) < count:
-            result.extend(self._buffer.get(block=True, timeout=timeout))
+            result += self._buffer.get(block=True, timeout=timeout)
 
         return bytes(result)
 

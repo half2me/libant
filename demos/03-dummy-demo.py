@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from time import sleep
 
-from libAnt.driver import DummyDriver
+from libAnt.driver import DummyDriver, PcapLogger
 from libAnt.node import Node
 
 
@@ -13,7 +13,7 @@ def eCallback(e):
     raise e
 
 
-with Node(DummyDriver(), 'MyNode') as n:
+with Node(DummyDriver(PcapLogger('log.pcap')), 'MyNode') as n:
     n.enableRxScanMode()
     n.start(callback, eCallback)
     sleep(1)  # Listen for 30sec
