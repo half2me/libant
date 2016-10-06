@@ -407,7 +407,7 @@ class PcapDriver(Driver):
 
 
 class logger:
-    def __init__(self, logFile):
+    def __init__(self, logFile: str):
         self._logFile = logFile
         self._log = None
 
