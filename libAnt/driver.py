@@ -8,7 +8,6 @@ from serial import Serial, SerialException, SerialTimeoutException
 import usb
 import time
 from struct import *
-import os
 
 from libAnt.constants import MESSAGE_TX_SYNC, MESSAGE_CHANNEL_BROADCAST_DATA
 from libAnt.message import Message, SystemResetMessage
@@ -408,7 +407,6 @@ class PcapDriver(Driver):
 
         def run(self) -> None:
             self._pcapfile = open(self._pcap, 'rb')
-            self._EOF = os.stat(self._pcap).st_size
             # move file pointer to first packet header
             global_header_length = 24
             self._pcapfile.seek(global_header_length, 0)
@@ -416,10 +414,10 @@ class PcapDriver(Driver):
             first_ts = 0
             start_time = time.time()
             while not self._stopper.is_set():
-                if self._pcapfile.tell() == self._EOF:
+                try:
+                    ts_sec, = unpack('i', self._pcapfile.read(4))
+                except:
                     break
-
-                ts_sec, = unpack('i', self._pcapfile.read(4))
                 ts_usec = unpack('i', self._pcapfile.read(4))[0] / 1000000
 
                 if first_ts is 0:
