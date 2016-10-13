@@ -14,7 +14,7 @@ def eCallback(e):
     print(e)
 
 
-with Node(PcapDriver('log.pcap'), 'MyNode') as n:
+with Node(PcapDriver('log.pcap', PcapLogger("pcap-demo-log.pcap")), 'MyNode') as n:
     # n.enableRxScanMode()
     f = Factory(callback)
     n.start(f.parseMessage, eCallback)

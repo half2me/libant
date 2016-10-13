@@ -30,7 +30,6 @@ class Logger:
 
     def open(self):
         def validate(logFile: str) -> str:
-            print("got", logFile)
             if '.' in logFile:
                 name, ext = logFile.split('.', 2)
                 ext = '.' + ext
@@ -43,6 +42,7 @@ class Logger:
                 logFile = name + '-' + str(num) + ext
                 try:
                     with open(logFile):
+                            pass
                 except IOError:
                     return logFile
                 num += 1
@@ -50,7 +50,6 @@ class Logger:
         if self._log is not None:
             self.close()
         self._logFile = validate(self._logFile)
-        print(self._logFile)
         self._log = open(self._logFile, 'wb')
         self.onOpen()
 
