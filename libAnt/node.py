@@ -78,7 +78,7 @@ class Pump(threading.Thread):
 
 
 class Node:
-    def __init__(self, driver, name=None):
+    def __init__(self, driver: Driver, name: str = None):
         self._driver = driver
         self._name = name
         self._out = Queue()

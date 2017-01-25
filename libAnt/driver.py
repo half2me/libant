@@ -1,26 +1,115 @@
 from abc import abstractmethod
-from queue import Queue, Empty
+from queue import Queue
 from threading import Lock, Thread, Event
 
+import math
 from serial import Serial, SerialException, SerialTimeoutException
 
 import usb
+import time
+from struct import *
 
-from libAnt.constants import MESSAGE_TX_SYNC
+from libAnt.constants import MESSAGE_TX_SYNC, MESSAGE_CHANNEL_BROADCAST_DATA
 from libAnt.message import Message, SystemResetMessage
 
 
 class DriverException(Exception):
     pass
 
+class Logger:
+    def __init__(self, logFile: str):
+        self._logFile = logFile
+        self._log = None
+
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def open(self):
+        def validate(logFile: str) -> str:
+            if '.' in logFile:
+                name, ext = logFile.split('.', 2)
+                ext = '.' + ext
+            else:
+                name = logFile
+                ext = ''
+            num = 0
+            exists = True
+            while(exists):
+                logFile = name + '-' + str(num) + ext
+                try:
+                    with open(logFile):
+                            pass
+                except IOError:
+                    return logFile
+                num += 1
+
+        if self._log is not None:
+            self.close()
+        self._logFile = validate(self._logFile)
+        self._log = open(self._logFile, 'wb')
+        self.onOpen()
+
+    def close(self):
+        if self._log is not None:
+            self.beforeClose()
+            self._log.close()
+            self.afterClose()
+
+    def log(self, data: bytes):
+        self._log.write(self.encodeData(data))
+
+    def onOpen(self):
+        pass
+
+    def beforeClose(self):
+        pass
+
+    def afterClose(self):
+        pass
+
+    def encodeData(self, data):
+        return data
+
+class PcapLogger(Logger):
+    def onOpen(self):
+        # write pcap global header
+        magic_number = b'\xD4\xC3\xB2\xA1'
+        version_major = 2
+        version_minor = 4
+        thiszone = b'\x00\x00\x00\x00'
+        sigfigs = b'\x00\x00\x00\x00'
+        snaplen = b'\xFF\x00\x00\x00'
+        network = b'\x01\x00\x00\x00'
+        pcap_global_header = Struct('<4shh4s4s4s4s')
+        self._log.write(
+            pcap_global_header.pack(magic_number, version_major, version_minor, thiszone, sigfigs,
+                                    snaplen, network))
+
+    def encodeData(self, data):
+        timestamp = time.time()
+        frac, whole = math.modf(timestamp)
+
+        ts_sec = int(whole).to_bytes(4, byteorder='little')
+        ts_usec = int(frac * 1000 * 1000).to_bytes(4, byteorder='little')
+        incl_len = len(data)
+        orig_len = incl_len
+
+        pcap_packet_header = Struct('<4s4sll').pack(ts_sec, ts_usec, incl_len, orig_len)
+        return pcap_packet_header + data
 
 class Driver:
     """
     The driver provides an interface to read and write raw data to and from an ANT+ capable hardware device
     """
 
-    def __init__(self):
+    def __init__(self, logger: Logger = None):
         self._lock = Lock()
+        self._logger = logger
+        self._openTime = None
 
     def __enter__(self):
         self.open()
@@ -36,12 +125,17 @@ class Driver:
     def open(self) -> None:
         with self._lock:
             if not self._isOpen():
+                self._openTime = time.time()
+                if self._logger is not None:
+                    self._logger.open()
                 self._open()
 
     def close(self) -> None:
         with self._lock:
             if self._isOpen:
                 self._close()
+                if self._logger is not None:
+                    self._logger.close()
 
     def reOpen(self) -> None:
         with self._lock:
@@ -58,11 +152,19 @@ class Driver:
                 sync = self._read(1, timeout=timeout)[0]
                 if sync is not MESSAGE_TX_SYNC:
                     continue
-                len = self._read(1, timeout=timeout)[0]
+                length = self._read(1, timeout=timeout)[0]
                 type = self._read(1, timeout=timeout)[0]
-                data = self._read(len, timeout=timeout)
+                data = self._read(length, timeout=timeout)
                 chk = self._read(1, timeout=timeout)[0]
                 msg = Message(type, data)
+
+                if self._logger:
+                    logMsg = bytearray([sync, length, type])
+                    logMsg.extend(data)
+                    logMsg.append(chk)
+
+                    self._logger.log(bytes(logMsg))
+
                 if msg.checksum() == chk:
                     return msg
 
@@ -99,8 +201,8 @@ class SerialDriver(Driver):
     An implementation of a serial ANT+ device driver
     """
 
-    def __init__(self, device: str, baudRate: int = 115200):
-        super().__init__()
+    def __init__(self, device: str, baudRate: int = 115200, logger: Logger = None):
+        super().__init__(logger=logger)
         self._device = device
         self._baudRate = baudRate
         self._serial = None
@@ -142,8 +244,8 @@ class USBDriver(Driver):
     An implementation of a USB ANT+ device driver
     """
 
-    def __init__(self, vid, pid):
-        Driver.__init__(self)
+    def __init__(self, vid, pid, logger: Logger = None):
+        super().__init__(logger=logger)
         self._idVendor = vid
         self._idProduct = pid
         self._dev = None
@@ -159,6 +261,29 @@ class USBDriver(Driver):
         if self.isOpen():
             return str(self._dev)
         return "Closed"
+
+    class USBLoop(Thread):
+        def __init__(self, ep, packetSize: int, queue: Queue):
+            super().__init__()
+            self._stopper = Event()
+            self._ep = ep
+            self._packetSize = packetSize
+            self._queue = queue
+
+        def stop(self) -> None:
+            self._stopper.set()
+
+        def run(self) -> None:
+            while not self._stopper.is_set():
+                try:
+                    data = self._ep.read(self._packetSize, timeout=1000)
+                    for d in data:
+                        self._queue.put(d)
+                except usb.core.USBError as e:
+                    if e.errno not in (60, 110) and e.backend_error_code != -116:  # Timout errors
+                        self._stopper.set()
+            # We Put in an invalid byte so threads will realize the device is stopped
+            self._queue.put(None)
 
     def _isOpen(self) -> bool:
         return self._driver_open
@@ -204,7 +329,7 @@ class USBDriver(Driver):
                 raise DriverException("Could not initialize USB endpoint")
 
             self._queue = Queue()
-            self._loop = USBLoop(self._epIn, self._packetSize, self._queue)
+            self._loop = self.USBLoop(self._epIn, self._packetSize, self._queue)
             self._loop.start()
             self._driver_open = True
             print('USB OPEN SUCCESS')
@@ -241,26 +366,80 @@ class USBDriver(Driver):
     def _write(self, data: bytes) -> None:
         return self._epOut.write(data)
 
+class PcapDriver(Driver):
+    def __init__(self, pcap, logger: Logger = None):
+        super().__init__(logger=logger)
+        self._isopen = False
+        self._pcap = pcap
+        self._buffer = Queue()
 
-class USBLoop(Thread):
-    def __init__(self, ep, packetSize: int, queue: Queue):
-        super().__init__()
-        self._stopper = Event()
-        self._ep = ep
-        self._packetSize = packetSize
-        self._queue = queue
+        self._loop = None
 
-    def stop(self) -> None:
-        self._stopper.set()
+    class PcapLoop(Thread):
+        def __init__(self, pcap, buffer: Queue):
+            super().__init__()
+            self._stopper = Event()
+            self._pcap = pcap
+            self._buffer = buffer
 
-    def run(self) -> None:
-        while not self._stopper.is_set():
-            try:
-                data = self._ep.read(self._packetSize, timeout=1000)
-                for d in data:
-                    self._queue.put(d)
-            except usb.core.USBError as e:
-                if e.errno not in (60, 110) and e.backend_error_code != -116: # Timout errors
-                    self._stopper.set()
-        #  We Put in an invalid byte so threads will realize the device is stopped
-        self._queue.put(None)
+        def stop(self) -> None:
+            self._stopper.set()
+
+        def run(self) -> None:
+            self._pcapfile = open(self._pcap, 'rb')
+            # move file pointer to first packet header
+            global_header_length = 24
+            self._pcapfile.seek(global_header_length, 0)
+
+            first_ts = 0
+            start_time = time.time()
+            while not self._stopper.is_set():
+                try:
+                    ts_sec, = unpack('i', self._pcapfile.read(4))
+                except error:
+                    break
+                ts_usec = unpack('i', self._pcapfile.read(4))[0] / 1000000
+
+                if first_ts is 0:
+                    first_ts = ts_sec + ts_usec
+
+                ts = ts_sec + ts_usec
+                send_time = ts - first_ts
+                elapsed_time = time.time() - start_time
+                if send_time > (elapsed_time):
+                    sleep_time = send_time - elapsed_time
+                    time.sleep(sleep_time)
+
+                packet_length = unpack('i', self._pcapfile.read(4))[0]
+                self._pcapfile.seek(4, 1)
+                for i in range(packet_length):
+                    self._buffer.put(self._pcapfile.read(1))
+
+            self._pcapfile.close()
+
+    def _isOpen(self) -> bool:
+        return self._isopen
+
+    def _open(self) -> None:
+        self._isopen = True
+        self._loop = self.PcapLoop(self._pcap, self._buffer)
+        self._loop.start()
+
+    def _close(self) -> None:
+        self._isopen = False
+        if self._loop is not None:
+            if self._loop.is_alive():
+                self._loop.stop()
+                self._loop.join()
+        self._loop = None
+
+    def _read(self, count: int, timeout=None) -> bytes:
+        result = bytearray()
+
+        while len(result) < count:
+            result += self._buffer.get(block=True, timeout=timeout)
+
+        return bytes(result)
+
+    def _write(self, data: bytes) -> None:
+        pass

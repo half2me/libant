@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from time import sleep
 
-from libAnt.driver import USBDriver, PcapLogger
+from libAnt.driver import PcapDriver, PcapLogger
 from libAnt.node import Node
 from libAnt.profiles.factory import Factory
 
@@ -11,12 +11,11 @@ def callback(msg):
 
 
 def eCallback(e):
-    raise(e)
+    print(e)
 
 
-with Node(USBDriver(vid=0x0FCF, pid=0x1008, logger=PcapLogger(logFile='log.pcap')), 'MyNode') as n:
+with Node(PcapDriver('log.pcap', PcapLogger("pcap-demo-log.pcap")), 'MyNode') as n:
+    # n.enableRxScanMode()
     f = Factory(callback)
-
-    n.enableRxScanMode()
     n.start(f.parseMessage, eCallback)
-    sleep(10)  # Listen for 1min
+    sleep(20)  # Listen for 30sec
