@@ -144,10 +144,6 @@ class Driver:
             self._open()
 
     def read(self, timeout=None) -> Message:
-        # Splits the string into a list of tokens every n characters
-        def splitN(str1, n):
-            return [str1[start:start + n] for start in range(0, len(str1), n)]
-
         if not self.isOpen():
             raise DriverException("Device is closed")
 
@@ -369,41 +365,6 @@ class USBDriver(Driver):
 
     def _write(self, data: bytes) -> None:
         return self._epOut.write(data)
-
-
-class DummyDriver(Driver):
-    def __init__(self, logger: Logger = None):
-        super().__init__(logger=logger)
-        self._isopen = False
-        self._data = Queue()
-        msg1 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\x01\x02\x03\x04\x05\x06\x07').encode()
-        for b in msg1:
-            self._data.put(b)
-        msg2 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\xF1\xF2\xF3\xF4\xF5\xF6\xF7').encode()
-        for b in msg2:
-            self._data.put(b)
-        msg3 = Message(MESSAGE_CHANNEL_BROADCAST_DATA, b'\x00\xF9\xFA\xFB\xFC\xFD\xFE\xFF').encode()
-        for b in msg3:
-            self._data.put(b)
-
-    def _isOpen(self) -> bool:
-        return self._isopen
-
-    def _close(self) -> None:
-        self._isopen = False
-
-    def _read(self, count: int, timeout=None) -> bytes:
-        data = bytearray()
-        for i in range(0, count):
-            data.append(self._data.get(timeout=timeout))
-        return bytes(data)
-
-    def _open(self) -> None:
-        self._isopen = True
-
-    def _write(self, data: bytes) -> None:
-        pass
-
 
 class PcapDriver(Driver):
     def __init__(self, pcap, logger: Logger = None):
