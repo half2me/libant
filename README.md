@@ -16,3 +16,10 @@ For the latest clone the repo and do `./setup.py install` under UNIX systems or 
 
 ## Usage
 See usage examples in the `demos` folder.
+If you want to use the serial driver under linux, either run the script as root, or add your user to the `dialout` group with:
+```bash
+sudo adduser yourusername dialout
+```
+
+## Known bugs
+The usb driver has a bug which requires you to replug your ANT+ stick every time you run a demo script. So until we get that fixed, I suggest you stick to the serial driver, which is stable.

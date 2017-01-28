@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
     name='LibAnt',
-    packages=['libAnt', 'libAnt.profiles'],
+    packages=['libAnt', 'libAnt.profiles', 'libAnt.drivers', 'libAnt.loggers'],
     version='0.1.3',
     description='Python Ant+ Lib',
     author='Benjamin Tamasi',

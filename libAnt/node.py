@@ -2,7 +2,7 @@ import threading
 from queue import Queue, Empty
 from time import sleep
 
-from libAnt.driver import Driver
+from libAnt.drivers.driver import Driver
 from libAnt.message import *
 
 
@@ -28,6 +28,7 @@ class Pump(threading.Thread):
         self._onFailure = onFailure
 
     def stop(self):
+        self._driver.abort()
         self._stopper.set()
 
     def stopped(self):
