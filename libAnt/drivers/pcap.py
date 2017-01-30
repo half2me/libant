@@ -8,19 +8,21 @@ from libAnt.loggers.logger import Logger
 
 
 class PcapDriver(Driver):
-    def __init__(self, pcap : str, logger: Logger = None):
+    def __init__(self, pcap : str, logger: Logger = None, loopplayback: bool = False):
         super().__init__(logger=logger)
         self._isopen = False
         self._pcap = pcap
+        self._loopplayback = loopplayback
         self._buffer = Queue()
 
         self._loop = None
 
     class PcapLoop(Thread):
-        def __init__(self, pcap, buffer: Queue):
+        def __init__(self, pcap, buffer: Queue, loopplayback):
             super().__init__()
             self._stopper = Event()
             self._pcap = pcap
+            self._loopplayback = loopplayback
             self._buffer = buffer
 
         def stop(self) -> None:
@@ -28,33 +30,37 @@ class PcapDriver(Driver):
 
         def run(self) -> None:
             self._pcapfile = open(self._pcap, 'rb')
-            # move file pointer to first packet header
-            global_header_length = 24
-            self._pcapfile.seek(global_header_length, 0)
 
-            first_ts = 0
-            start_time = time.time()
             while not self._stopper.is_set():
-                try:
-                    ts_sec, = unpack('i', self._pcapfile.read(4))
-                except error:
+                # move file pointer to first packet header
+                global_header_length = 24
+                self._pcapfile.seek(global_header_length, 0)
+
+                first_ts = 0
+                start_time = time.time()
+                while True:
+                    try:
+                        ts_sec, = unpack('i', self._pcapfile.read(4))
+                    except error:
+                        break
+                    ts_usec = unpack('i', self._pcapfile.read(4))[0] / 1000000
+
+                    if first_ts is 0:
+                        first_ts = ts_sec + ts_usec
+
+                    ts = ts_sec + ts_usec
+                    send_time = ts - first_ts
+                    elapsed_time = time.time() - start_time
+                    if send_time > elapsed_time:
+                        sleep_time = send_time - elapsed_time
+                        time.sleep(sleep_time)
+
+                    packet_length = unpack('i', self._pcapfile.read(4))[0]
+                    self._pcapfile.seek(4, 1)
+                    for i in range(packet_length):
+                        self._buffer.put(self._pcapfile.read(1))
+                if not self._loopplayback:
                     break
-                ts_usec = unpack('i', self._pcapfile.read(4))[0] / 1000000
-
-                if first_ts is 0:
-                    first_ts = ts_sec + ts_usec
-
-                ts = ts_sec + ts_usec
-                send_time = ts - first_ts
-                elapsed_time = time.time() - start_time
-                if send_time > (elapsed_time):
-                    sleep_time = send_time - elapsed_time
-                    time.sleep(sleep_time)
-
-                packet_length = unpack('i', self._pcapfile.read(4))[0]
-                self._pcapfile.seek(4, 1)
-                for i in range(packet_length):
-                    self._buffer.put(self._pcapfile.read(1))
 
             self._pcapfile.close()
 
@@ -63,7 +69,7 @@ class PcapDriver(Driver):
 
     def _open(self) -> None:
         self._isopen = True
-        self._loop = self.PcapLoop(self._pcap, self._buffer)
+        self._loop = self.PcapLoop(self._pcap, self._buffer, self._loopplayback)
         self._loop.start()
 
     def _close(self) -> None:

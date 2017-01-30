@@ -2,6 +2,7 @@
 from time import sleep
 
 from libAnt.drivers.pcap import PcapDriver
+from libAnt.loggers.pcap import PcapLogger
 from libAnt.node import Node
 from libAnt.profiles.factory import Factory
 
@@ -14,8 +15,8 @@ def eCallback(e):
     print(e)
 
 
-with Node(PcapDriver('demo-capture-1.pcap'), 'PcapNode1') as n:
+with Node(PcapDriver('very-short-log-0.pcap', loopplayback=True), 'PcapNode1') as n:
     # n.enableRxScanMode() # Pcap driver is read-only
     f = Factory(callback)
     n.start(f.parseMessage, eCallback)
-    sleep(30)  # Listen for 30sec
+    sleep(60 * 60 * 10)  # Listen for 10 hours!
