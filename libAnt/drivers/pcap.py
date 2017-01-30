@@ -38,7 +38,7 @@ class PcapDriver(Driver):
 
                 first_ts = 0
                 start_time = time.time()
-                while True:
+                while  not self._stopper.is_set():
                     try:
                         ts_sec, = unpack('i', self._pcapfile.read(4))
                     except error:

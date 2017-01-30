@@ -15,8 +15,8 @@ def eCallback(e):
     print(e)
 
 
-with Node(PcapDriver('very-short-log-0.pcap', loopplayback=True), 'PcapNode1') as n:
+with Node(PcapDriver('log-0.pcap', loopplayback=True), 'PcapNode1') as n:
     # n.enableRxScanMode() # Pcap driver is read-only
     f = Factory(callback)
     n.start(f.parseMessage, eCallback)
-    sleep(60 * 60 * 10)  # Listen for 10 hours!
+    sleep(10)
