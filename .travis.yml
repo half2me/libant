@@ -9,7 +9,6 @@ deploy:
   server: https://testpypi.python.org/pypi
   user: glevente
   password:
-    secure: qdvbTdnAt32N58dHHHxND9zhHyMPjTAd3H2TY4KVjrU7tX1QU8vna3lT/fLD8hV199NReCcnTivbZfnh+9DbLrAWDBR5WLr+gZalsdV2W427XFM1XneOXMTGAK5bXBjssIdLSySQJSpecL3ckomOdhzEzrcdwwWY67WFAVcBHAON2Sz7NjYp+cGTLSXnBPiUg36Ygl1JiYMGYlzNtq+Qm8RmF2TjCEtjTMPBmVepzpCROghHO0PO1Y/CtNgkkwRXj3JbClTpJVUvBd/MMvk8S7QXA3OnVAsKnSI/GzUq4c4cLg7FNeKcPHFbEGUyeQ9J4I8ixHyiEQSycm8A4tCyTzcC7gz/bB3M4132Id+b34CD5SF4ORxxgOgh4mdeuxYvFXT9ZfXHMHA5PM1VZAxW6FemTjChpAMEil4qOI2tyUcxYfMzaHG8VBWGBpzzRE9y36Cs2pDBJByEBuYHFtGwBKrH2tNiEHtTMPFIj8Jx+Kt6C5eHagGRrZ2l4kuyDmyxKWw+/G8sl+oY6Zp4L0qt+lFzcVFlN6Yn1jslsRqws3tMMCfYRzVnGeExkHjZ9FtMdfPX1wlffJo9ttt/DXFkk2xGobx9Ja9Ka2S6EDz+6KDrcVrPDfRxiOvZPSeXa0upufs09eHVwVXB6PVymju1uihFCLyZ1QONEZtCtbT3JuQ=
   on:
     branches:
       only:
