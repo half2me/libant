@@ -5,7 +5,7 @@ from setuptools import setup
 setup(
     name='LibAnt',
     packages=['libAnt', 'libAnt.profiles', 'libAnt.drivers', 'libAnt.loggers'],
-    version='0.1.5',
+    version='0.1.6',
     description='Python Ant+ Lib',
     author='Benjamin Tamasi',
     author_email='h@lfto.me',
