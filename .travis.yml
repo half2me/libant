@@ -1,19 +1,36 @@
+
 language: python
+cache:
+  directories:
+  - "$HOME/.cache/pip"
+  - "$HOME/.pyenv"
 python:
-- '3.5'
-script:
-- echo hello
+  - "3.5"
+  - "nightly"
+  - "pypy3"
+
+install:
+  - pip install -r requirements.txt
+  - python setup.py -q install
+
+matrix:
+  fast_finish: true
+sudo: false
+notifications:
+  email: false
+script: echo hello
+
 deploy:
-- provider: pypi
-  distributions: sdist bdist_wheel
+  provider: pypi
   server: https://testpypi.python.org/pypi
+  distributions: sdist bdist_wheel
   user: glevente
   password:
     secure: "hsIPTpzfyWWABcd5SoWELkIXG6PBrew5KB4Knx9YDWKKj9UrnAIUKK0VMAuTwnZ30Lhd1bN8HxZ45299+GvDwuQPNqYx+jaJLu+7dylSt53LZEq0KiN1hjMlv/n1ub3q9CCfkSHp6ELDj/+Eqwz2tPyxytdtn1Bm/xIm2cfMY5+UM56t1esKKg+h5HfXAdrkYubAq2AiuHH9ZmmhQiQ7T1pH6apm0wx8fSidlKGJB6XXCwDZpdk1fC8vkFg1uibB8Us6+IEkQTc13Ju5RlDJnwuEg0MebAN3AYR63xK3gYLOL6jvbA0Aizc95f8yW2rN4ihLfb1sXUbKibfSKZDo/JkkjsUlkI+is1gjtLs69jbkul5EXW7s2DWz09yGjwrDsZt1V5HY5XzANe7xGbRsX7QY9MerLwQZ2CKJ0m30bgfgscnEOnk9hvWc5CjT4Y4rqh72lxA0dXqgdkNDaLIp1CBq567lqV9giIMPBcY+XmBmhk5n5WF00VcvjXJrd3xGA5OvdL2ew8iqrViCjYGyt3P5Q875yA6rLblQE1j1vWym7FyN9rJNO/BTR+4rBqIPQLaGv2dtE/ay7bCmBvXZDZthx9wTbETz++DJRNyM7EsMjnGr5uLkSncsnKDBTD3cSQlAtHSOQmZoZntTqLAUMjzGnqgHjW2M1fxwQ3sxKYA="
-
   on:
     branches:
       only:
       - master
       - "/([0-9].[0-9].[0-9])/"
     tags: true
+    repo: half2me/libant
