@@ -8,10 +8,11 @@ deploy:
   distributions: sdist bdist_wheel
   server: https://testpypi.python.org/pypi
   user: glevente
-  password: PyPI1234
+  password:
+    secure: Pi37dLigItH7OEciwBNoNaYJIF2WWB6omPXm/Dcg7c8IwWeATI70I4Y9CErs45Vl0Y/acSvfbRd62R7KXnHy6haDnme9j9KiEPPw/UMtzY4C4gfyNv3sZsfR/gvNKqErvGbScezn0g7kRCGDfgaTMFGvMr584sGjlkLimpcHMWaxLUmzYSZQg4nTJIjOA3tIvzfchvtjUSLJ90OOqgIRGtZWfQAJwAaP6lYyfh08LmEkQwMubCylz9zQtSc1Ge1BVvV1W+i6LobVb1L8RduGj9/E/XDx7jjltOLPGg6ND8zfvBTn21ykP6B8sfJsJHjmxYCdUV9Wc9gwtg/jyiEslAXGYWj63XyhAGLKovdn4MWNs8m5nDkmeh9nlAC3yzg15kVY7OfZGhbFnrFDzcbPELcq/PXz/O9F+fQ8PUIkRV3lHP+e5wg3u+19eQppWE0t9bJlgSX+Ccb3qcqmkWAKMwpqSb+PJcAUXbscaaHH1GGfDUQa8hRmW9Rh7waQoGePDiTp06e70YOXQ5ATtzO6tdivqgE8SDYuPtZ8+fc1bMPt6C/8/v5e6hFINBlODgDjISOMQsjmA2VM3loWyUBCCQAQiB4K6qwWGJ9lN22fisQCOt+Byest5GNJt6R2qy6eAUPwmLUBVwc7nYob1RN9+zDPgzd1TJ+8Y8uzJUXumsM=
   on:
     branches:
       only:
-        - master
-        - /([0-9].[0-9].[0-9])/
+      - master
+      - "/([0-9].[0-9].[0-9])/"
     tags: true
