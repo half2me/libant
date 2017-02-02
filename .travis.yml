@@ -8,7 +8,7 @@ deploy:
   distributions: sdist bdist_wheel
   server: https://testpypi.python.org/pypi
   user: glevente
-  password:
+  password: PyPI1234
   on:
     branches:
       only:
