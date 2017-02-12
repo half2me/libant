@@ -51,6 +51,9 @@ class Factory:
             if msg.deviceType in Factory.types:
                 num = msg.deviceNumber
                 type = msg.deviceType
+                if type == 11: # Quick patch to filter out power messages with non-power info
+                    if msg.content[0] != 16:
+                        return
                 pmsg = self.types[type](msg, self._messages[(num, type)] if (num, type) in self._messages else None)
                 self._messages[(num, type)] = pmsg
                 if callable(self._callback):
