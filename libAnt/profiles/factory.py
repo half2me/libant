@@ -3,10 +3,12 @@ from threading import Lock
 from libAnt.message import BroadcastMessage
 from libAnt.profiles.power_profile import PowerProfileMessage
 from libAnt.profiles.speed_cadence_profile import SpeedAndCadenceProfileMessage
+from libAnt.profiles.heartrate_profile import HeartRateProfileMessage
 
 
 class Factory:
     types = {
+        120: HeartRateProfileMessage,
         121: SpeedAndCadenceProfileMessage,
         11: PowerProfileMessage
     }
