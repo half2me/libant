@@ -29,7 +29,7 @@ class SerialDriver(Driver):
 
     def _open(self) -> None:
         try:
-            self._serial = Serial(port=self._device, baudrate=self._baudRate, dsrdtr=True, rtscts=True)
+            self._serial = Serial(port=self._device, baudrate=self._baudRate)
         except SerialException as e:
             raise DriverException(str(e))
 
